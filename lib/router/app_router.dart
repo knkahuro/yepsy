@@ -4,6 +4,7 @@ import '../features/notes/screens/notes_screen.dart';
 import '../features/meals/screens/meals_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
 import '../features/sleep_tracking/screens/sleep_tracking_screen.dart';
+
 import '../features/profile/screens/profile_screen.dart';
 import '../features/calendar/screens/day_details_page.dart';
 import '../features/calendar/models/calendar_event.dart';
@@ -67,7 +68,8 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
                 path: '/calendar',
-                builder: (context, state) => const CalendarScreen(),
+                builder: (context, state) =>
+                    CalendarScreen(key: calendarScreenKey),
                 routes: [
                   GoRoute(
                     path: 'details',

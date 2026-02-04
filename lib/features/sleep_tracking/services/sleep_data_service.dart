@@ -20,9 +20,6 @@ class SleepDataService {
 
     final cipher = await DatabaseService.getEncryptionCipher();
 
-    if (!Hive.isAdapterRegistered(3)) {
-      Hive.registerAdapter(SleepLogAdapter());
-    }
     await Hive.openLazyBox<SleepLog>(_boxName, encryptionCipher: cipher);
     _isInitialized = true;
   }

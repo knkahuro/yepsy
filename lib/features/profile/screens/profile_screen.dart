@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../../../../theme/typography.dart';
@@ -14,6 +15,9 @@ import '../widgets/option_tile.dart';
 import '../../../core/services/biometric_service.dart';
 import '../../../core/services/encryption_service.dart';
 import '../../../core/services/streak_service.dart';
+import '../../../core/services/onboarding_service.dart';
+import '../../calendar/screens/calendar_screen.dart';
+import 'version_features_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,6 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _biometricType = 'Biometric';
 
   final EncryptionService _encryptionService = EncryptionService();
+  final OnboardingService _onboardingService = OnboardingService();
 
   @override
   void initState() {
@@ -560,55 +565,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             const SizedBox(height: 32),
+            const SectionTitle(title: 'Help & Support'),
+            const SizedBox(height: 12),
+            OptionTile(
+              icon: Icons.school_outlined,
+              title: 'Tutorials',
+              subtitle: 'Replay the app tutorial',
+              onTap: _showTutorial,
+            ),
+
+            const SizedBox(height: 32),
             const SectionTitle(title: 'About'),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const VersionFeaturesPage(),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Yepsy',
-                          style: AppTypography.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Version 1.0.0',
-                          style: AppTypography.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.info_outline,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 20,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Yepsy',
+                            style: AppTypography.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Version 1.0.0',
+                            style: AppTypography.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey[400],
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -754,5 +785,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showTutorial() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Replay Tutorial'),
+        content: const Text(
+          'This will reset the tutorial and navigate to the Calendar screen to show it. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      debugPrint('🔄 ProfileScreen: Resetting tutorial...');
+      await _onboardingService.resetTutorial();
+      debugPrint('🔄 ProfileScreen: Tutorial reset complete');
+      if (!mounted) return;
+
+      debugPrint('🔄 ProfileScreen: Navigating to calendar...');
+      // Navigate to calendar to trigger tutorial
+      context.go('/calendar');
+
+      // Wait a moment for navigation to complete, then force tutorial check
+      await Future.delayed(const Duration(milliseconds: 500));
+      debugPrint('🔄 ProfileScreen: Calling forceTutorialCheck...');
+      CalendarScreen.forceTutorialCheck();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tutorial will show in a moment...'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }

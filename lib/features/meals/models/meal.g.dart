@@ -24,13 +24,14 @@ class MealAdapter extends TypeAdapter<Meal> {
       imagePath: fields[4] as String?,
       category: fields[5] as String,
       rating: fields[6] as int,
+      date: fields[7] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Meal obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class MealAdapter extends TypeAdapter<Meal> {
       ..writeByte(5)
       ..write(obj.category)
       ..writeByte(6)
-      ..write(obj.rating);
+      ..write(obj.rating)
+      ..writeByte(7)
+      ..write(obj.date);
   }
 
   @override

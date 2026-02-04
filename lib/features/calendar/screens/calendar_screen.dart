@@ -19,8 +19,20 @@ import '../services/cycle_learning_service.dart';
 
 import '../../../shared/widgets/skeleton_loader.dart';
 
+// Global key for accessing CalendarScreen state from anywhere
+final GlobalKey<State<CalendarScreen>> calendarScreenKey =
+    GlobalKey<State<CalendarScreen>>();
+
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
+
+  // Public static method to force tutorial check
+  static void forceTutorialCheck() {
+    final state = calendarScreenKey.currentState;
+    if (state is _CalendarScreenState) {
+      state.forceTutorialCheck();
+    }
+  }
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -42,85 +54,85 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _isLoading = true;
 
   // Tutorial Keys
-  final GlobalKey _addButtonKey = GlobalKey();
   final GlobalKey _calendarKey = GlobalKey();
   final GlobalKey _legendKey = GlobalKey();
   final OnboardingService _onboardingService = OnboardingService();
   late TutorialCoachMark tutorialCoachMark;
 
-  // Legend filter state
   bool _showPeriods = false;
   bool _showSymptoms = false;
   bool _showFertileWindow = false;
   bool _showOvulation = false;
+
+  // Track last tutorial check to avoid redundant checks
+  DateTime? _lastTutorialCheck;
+
+  bool get _allTogglesOff =>
+      !_showPeriods && !_showSymptoms && !_showFertileWindow && !_showOvulation;
 
   @override
   void initState() {
     super.initState();
     _loadFilterStates();
     _loadData();
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkTutorial();
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Check tutorial every time the widget becomes visible, but throttle to once per 2 seconds
+    final now = DateTime.now();
+    if (_lastTutorialCheck == null ||
+        now.difference(_lastTutorialCheck!).inSeconds > 2) {
+      _lastTutorialCheck = now;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkTutorial();
+      });
+    }
   }
 
   Future<void> _checkTutorial() async {
+    debugPrint('🎓 CalendarScreen: Checking tutorial status...');
     final isCompleted = await _onboardingService.isTutorialCompleted();
+    debugPrint('🎓 CalendarScreen: Tutorial completed = $isCompleted');
     if (!isCompleted) {
+      debugPrint('🎓 CalendarScreen: Showing tutorial...');
       _showTutorial();
+    } else {
+      debugPrint('🎓 CalendarScreen: Tutorial already completed, skipping');
     }
   }
 
   void _showTutorial() {
+    debugPrint('🎓 CalendarScreen: Creating tutorial coach mark...');
     tutorialCoachMark = TutorialCoachMark(
       targets: _createTargets(),
       colorShadow: Theme.of(context).colorScheme.primary,
       textSkip: "SKIP",
       paddingFocus: 10,
       opacityShadow: 0.8,
-      onFinish: () => _onboardingService.completeTutorial(),
+      onFinish: () {
+        debugPrint('🎓 CalendarScreen: Tutorial finished');
+        _onboardingService.completeTutorial();
+      },
       onSkip: () {
+        debugPrint('🎓 CalendarScreen: Tutorial skipped');
         _onboardingService.completeTutorial();
         return true;
       },
-    )..show(context: context);
+    );
+    debugPrint('🎓 CalendarScreen: Showing tutorial coach mark...');
+    tutorialCoachMark.show(context: context);
+  }
+
+  // Public method to force tutorial check (can be called from anywhere)
+  void forceTutorialCheck() {
+    debugPrint('🎓 CalendarScreen: Force tutorial check requested');
+    _checkTutorial();
   }
 
   List<TargetFocus> _createTargets() {
     List<TargetFocus> targets = [];
-
-    targets.add(
-      TargetFocus(
-        identify: "addButton",
-        keyTarget: _addButtonKey,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Add Events & Symptoms",
-                    style: AppTypography.displayTextTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Tap here to log your daily events or track symptoms. This helps us learn about your unique cycle.",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
 
     targets.add(
       TargetFocus(
@@ -167,7 +179,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Interactive Filters",
+                    "Filters & Legend",
                     style: AppTypography.displayTextTheme.titleLarge?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -175,7 +187,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    "Toggle these items to filter what you see on the calendar. We predict your periods based on your history.",
+                    "Toggle filters to show or hide symbols on the calendar. This helps you focus on specific patterns.",
                     style: TextStyle(color: Colors.white),
                   ),
                 ],
@@ -199,22 +211,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (hasSetPreferences) {
       // User has manually toggled filters, use their saved preferences
-      setState(() {
-        _showPeriods = prefs.getBool('show_periods') ?? false;
-        _showSymptoms = prefs.getBool('show_symptoms') ?? false;
-        _showFertileWindow = prefs.getBool('show_fertile_window') ?? false;
-        _showOvulation = prefs.getBool('show_ovulation') ?? false;
-      });
+      if (mounted) {
+        setState(() {
+          _showPeriods = prefs.getBool('show_periods') ?? false;
+          _showSymptoms = prefs.getBool('show_symptoms') ?? false;
+          _showFertileWindow = prefs.getBool('show_fertile_window') ?? false;
+          _showOvulation = prefs.getBool('show_ovulation') ?? false;
+        });
+      }
     } else {
       // First time or no manual toggles - auto-enable if cycle data exists
-      // First time or no manual toggles - auto-enable if cycle data exists
-
-      setState(() {
-        _showPeriods = false;
-        _showSymptoms = false;
-        _showFertileWindow = false;
-        _showOvulation = false;
-      });
+      if (mounted) {
+        setState(() {
+          _showPeriods = false;
+          _showSymptoms = false;
+          _showFertileWindow = false;
+          _showOvulation = false;
+        });
+      }
     }
   }
 
@@ -341,9 +355,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         actions: [
           IconButton(
-            key: _addButtonKey,
-            onPressed: () => _showAddOptions(context),
-            icon: const Icon(Icons.add_box_outlined, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                if (_calendarFormat == CalendarFormat.month) {
+                  _calendarFormat = CalendarFormat.twoWeeks;
+                } else {
+                  _calendarFormat = CalendarFormat.month;
+                }
+              });
+            },
+            icon: Icon(
+              _calendarFormat == CalendarFormat.month
+                  ? Icons.calendar_view_day
+                  : Icons.calendar_view_month,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
@@ -393,13 +419,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   firstDay: DateTime.utc(2020, 10, 16),
                   lastDay: DateTime.utc(2030, 3, 14),
                   focusedDay: _focusedDay,
-                  calendarFormat: _calendarFormat,
+                  calendarFormat:
+                      _allTogglesOff ? CalendarFormat.month : _calendarFormat,
                   selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                   onDaySelected: (selectedDay, focusedDay) {
                     setState(() {
                       _selectedDay = selectedDay;
                       _focusedDay = focusedDay;
                     });
+                    _showAddOptions(selectedDay);
                   },
                   onFormatChanged: (format) {
                     setState(() {
@@ -429,6 +457,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     },
                     todayBuilder: (context, day, focusedDay) {
                       final cell = _buildDayCell(day, isToday: true);
+                      return GestureDetector(
+                        onDoubleTap: () => _openDayDetailsPage(day),
+                        child: cell,
+                      );
+                    },
+                    selectedBuilder: (context, day, focusedDay) {
+                      final cell = _buildDayCell(day);
                       return GestureDetector(
                         onDoubleTap: () => _openDayDetailsPage(day),
                         child: cell,
@@ -486,7 +521,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
               const SizedBox(height: 16),
               // Cycle Insights Card
-              CycleInsightsCard(cycleProfile: _cycleProfile),
+              if (!_allTogglesOff)
+                CycleInsightsCard(cycleProfile: _cycleProfile),
             ],
           ),
         ),
@@ -497,9 +533,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // Handle pull to refresh
   Future<void> _handleRefresh() async {
     final updatedProfile = await _dataService.getOrCreateCycleProfile();
-    setState(() {
-      _cycleProfile = updatedProfile;
-    });
+    if (mounted) {
+      setState(() {
+        _cycleProfile = updatedProfile;
+      });
+    }
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
@@ -614,14 +652,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _deleteEvent(CalendarEvent event) async {
     _events.removeWhere((e) => e.id == event.id);
     await _dataService.deleteEvent(event.id);
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   // Delete symptom
   void _deleteSymptom(SymptomLog symptom) async {
     _symptoms.removeWhere((s) => s.id == symptom.id);
     await _dataService.deleteSymptom(symptom.id);
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   // Build custom day cell with period tracking colors
@@ -772,25 +810,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
       isActive = _showPeriods;
       onTap = () {
         setState(() => _showPeriods = !_showPeriods);
-        _saveFilterState('show_periods', !_showPeriods);
+        _saveFilterState('show_periods', _showPeriods);
       };
     } else if (label == 'Symptoms') {
       isActive = _showSymptoms;
       onTap = () {
         setState(() => _showSymptoms = !_showSymptoms);
-        _saveFilterState('show_symptoms', !_showSymptoms);
+        _saveFilterState('show_symptoms', _showSymptoms);
       };
     } else if (label == 'Fertile Window') {
       isActive = _showFertileWindow;
       onTap = () {
         setState(() => _showFertileWindow = !_showFertileWindow);
-        _saveFilterState('show_fertile_window', !_showFertileWindow);
+        _saveFilterState('show_fertile_window', _showFertileWindow);
       };
     } else if (label == 'Ovulation') {
       isActive = _showOvulation;
       onTap = () {
         setState(() => _showOvulation = !_showOvulation);
-        _saveFilterState('show_ovulation', !_showOvulation);
+        _saveFilterState('show_ovulation', _showOvulation);
       };
     }
 
@@ -847,7 +885,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _showAddOptions(BuildContext context) {
+  void _showAddOptions(DateTime date) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -864,7 +902,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               title: const Text('Add Event'),
               onTap: () {
                 Navigator.pop(context);
-                _showAddEventForm(_selectedDay ?? DateTime.now());
+                _showAddEventForm(date);
               },
             ),
             ListTile(
@@ -873,7 +911,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               title: const Text('Log Symptoms'),
               onTap: () {
                 Navigator.pop(context);
-                _showAddSymptomForm(_selectedDay ?? DateTime.now());
+                _showAddSymptomForm(date);
               },
             ),
           ],

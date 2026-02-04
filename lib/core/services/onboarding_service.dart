@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class OnboardingService {
   static const String _isFirstRunKey = 'is_first_run';
@@ -20,13 +21,24 @@ class OnboardingService {
   /// Check if the interactive tutorial has been completed
   Future<bool> isTutorialCompleted() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_tutorialCompletedKey) ?? false;
+    final isCompleted = prefs.getBool(_tutorialCompletedKey) ?? false;
+    debugPrint('📚 OnboardingService: isTutorialCompleted = $isCompleted');
+    return isCompleted;
   }
 
   /// Mark the tutorial as completed
   Future<void> completeTutorial() async {
+    debugPrint('📚 OnboardingService: Marking tutorial as completed');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_tutorialCompletedKey, true);
+  }
+
+  /// Reset tutorial state (to replay tutorial)
+  Future<void> resetTutorial() async {
+    debugPrint('📚 OnboardingService: Resetting tutorial state');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tutorialCompletedKey);
+    debugPrint('📚 OnboardingService: Tutorial state reset complete');
   }
 
   /// Reset onboarding state (for testing)

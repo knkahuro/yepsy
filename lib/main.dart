@@ -26,10 +26,11 @@ void main() async {
   Hive.registerAdapter(SymptomLogAdapter());
   Hive.registerAdapter(CycleDataAdapter());
   Hive.registerAdapter(UserCycleProfileAdapter());
-  Hive.registerAdapter(SleepLogAdapter());
+
   Hive.registerAdapter(NoteAdapter());
   Hive.registerAdapter(MoodAdapter());
   Hive.registerAdapter(MealAdapter());
+  Hive.registerAdapter(SleepLogAdapter());
 
   MenstrualCycleWidget.init(
     secretKey: 'yepsy_secret_key_value_for_encryption',

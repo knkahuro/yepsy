@@ -5,6 +5,7 @@ import '../../features/calendar/models/cycle_data.dart';
 import '../../features/calendar/services/calendar_data_service.dart';
 import '../../features/sleep_tracking/models/sleep_log.dart';
 import '../../features/sleep_tracking/services/sleep_data_service.dart';
+
 import '../../features/notes/models/note.dart';
 import '../../features/notes/services/notes_data_service.dart';
 import '../../features/meals/models/meal.dart';
@@ -21,6 +22,7 @@ import '../../features/meals/services/meals_data_service.dart';
 class SampleDataService {
   final CalendarDataService _calendarService = CalendarDataService();
   final SleepDataService _sleepService = SleepDataService();
+
   final NotesDataService _notesService = NotesDataService();
   final MealsDataService _mealsService = MealsDataService();
 
@@ -28,6 +30,7 @@ class SampleDataService {
   Future<void> _initServices() async {
     await _calendarService.init();
     await _sleepService.init();
+
     await _notesService.init();
     await _mealsService.init();
   }

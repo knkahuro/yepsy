@@ -271,6 +271,11 @@ class NotificationService {
     final milestones = [3, 7, 14, 30, 50, 100];
     if (!milestones.contains(streak)) return;
 
+    // Check if we already notified for this streak
+    final prefs = await SharedPreferences.getInstance();
+    final lastNotified = prefs.getInt('last_notified_streak') ?? 0;
+    if (lastNotified == streak) return;
+
     const androidDetails = AndroidNotificationDetails(
       'milestone_notifications',
       'Milestone Notifications',
@@ -298,6 +303,9 @@ class NotificationService {
       details,
       payload: 'streak_milestone',
     );
+
+    // Save that we notified for this milestone
+    await prefs.setInt('last_notified_streak', streak);
   }
 
   // Cancel all notifications

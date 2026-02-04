@@ -106,11 +106,46 @@ class DayDetailsPage extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: onAddEvent,
+        onPressed: () => _showAddOptions(context),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
-        label: const Text('Add Event'),
+        label: const Text('Log Data'),
+      ),
+    );
+  }
+
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.event,
+                  color: Theme.of(context).colorScheme.primary),
+              title: const Text('Add Event'),
+              onTap: () {
+                Navigator.pop(context);
+                onAddEvent();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.water_drop,
+                  color: Theme.of(context).colorScheme.secondary),
+              title: const Text('Log Symptoms'),
+              onTap: () {
+                Navigator.pop(context);
+                onAddSymptom();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
