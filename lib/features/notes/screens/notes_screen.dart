@@ -55,20 +55,32 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 
   Future<void> _loadNotes() async {
-    await _dataService.init();
-    final notes = await _dataService.getAllNotes();
+    try {
+      await _dataService.init();
+      final notes = await _dataService.getAllNotes();
 
-    // Simulate network delay to show skeleton
-    await Future.delayed(const Duration(milliseconds: 1000));
+      // Simulate network delay to show skeleton
+      await Future.delayed(const Duration(milliseconds: 1000));
 
-    if (mounted) {
-      setState(() {
-        _allNotes.clear();
-        _allNotes.addAll(notes);
-        _filterNotes();
-        _loadPage();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _allNotes.clear();
+          _allNotes.addAll(notes);
+          _filterNotes();
+          _loadPage();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading notes: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load notes: $e')),
+        );
+      }
     }
   }
 

@@ -41,17 +41,31 @@ class _SleepTrackingScreenState extends State<SleepTrackingScreen> {
   }
 
   Future<void> _loadData() async {
-    await _dataService.init();
-    final insights = await _dataService.getSleepInsights();
-    final recentLogs = await _dataService.getRecentLogs();
-    final avgDuration = await _dataService.getAverageSleepDuration();
+    try {
+      await _dataService.init();
+      final insights = await _dataService.getSleepInsights();
+      final recentLogs = await _dataService.getRecentLogs();
+      final avgDuration = await _dataService.getAverageSleepDuration();
 
-    setState(() {
-      _insights = insights;
-      _recentLogs = recentLogs;
-      _avgDuration = avgDuration;
-      _isLoading = false;
-    });
+      if (mounted) {
+        setState(() {
+          _insights = insights;
+          _recentLogs = recentLogs;
+          _avgDuration = avgDuration;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading sleep data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load sleep data: $e')),
+        );
+      }
+    }
   }
 
   // Note: Delete log is trickier without a list to swipe.

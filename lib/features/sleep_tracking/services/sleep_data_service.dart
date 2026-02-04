@@ -4,10 +4,17 @@ import '../../../core/database/database_service.dart';
 import '../../../core/services/secure_delete_service.dart';
 
 class SleepDataService {
+  static final SleepDataService _instance = SleepDataService._internal();
+  factory SleepDataService() => _instance;
+  SleepDataService._internal();
+
   static const String _boxName = 'sleep_logs';
   final SecureDeleteService _secureDeleteService = SecureDeleteService();
 
+  bool _isInitialized = false;
+
   Future<void> init() async {
+    if (_isInitialized) return;
     // Migrate to encryption if needed
     await DatabaseService.migrateBoxToEncryption<SleepLog>(_boxName);
 
@@ -17,6 +24,7 @@ class SleepDataService {
       Hive.registerAdapter(SleepLogAdapter());
     }
     await Hive.openLazyBox<SleepLog>(_boxName, encryptionCipher: cipher);
+    _isInitialized = true;
   }
 
   LazyBox<SleepLog> get _box => Hive.lazyBox<SleepLog>(_boxName);

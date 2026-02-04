@@ -53,19 +53,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _onFinish() async {
     setState(() => _isGeneratingData = true);
 
-    // Generate sample data
-    await _sampleDataService.generateSampleData();
+    try {
+      // Generate sample data
+      await _sampleDataService.generateSampleData();
 
-    // Mark as completed
-    await _onboardingService.completeOnboarding();
+      // Mark as completed
+      await _onboardingService.completeOnboarding();
 
-    if (mounted) {
-      context.go('/calendar');
+      if (mounted) {
+        context.go('/calendar');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isGeneratingData = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error setting up data: $e')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = Theme.of(context).colorScheme.primary;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -119,7 +129,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               );
             },
           ),
-
           // Navigation controls
           Positioned(
             bottom: 60,
@@ -138,7 +147,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       width: _currentPage == index ? 24 : 8,
                       decoration: BoxDecoration(
                         color: _currentPage == index
-                            ? _slides[_currentPage].color
+                            ? themeColor
                             : Colors.grey[300],
                         borderRadius: BorderRadius.circular(4),
                       ),
@@ -146,7 +155,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   }),
                 ),
                 const SizedBox(height: 40),
-
                 // Button
                 SizedBox(
                   width: double.infinity,
@@ -165,7 +173,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             }
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _slides[_currentPage].color,
+                      backgroundColor: themeColor,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(

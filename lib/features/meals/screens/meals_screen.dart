@@ -77,20 +77,32 @@ class _MealsScreenState extends State<MealsScreen> {
   }
 
   Future<void> _loadMeals() async {
-    await _dataService.init();
-    final meals = await _dataService.getAllMeals();
+    try {
+      await _dataService.init();
+      final meals = await _dataService.getAllMeals();
 
-    // Simulate network delay to show skeleton
-    await Future.delayed(const Duration(milliseconds: 1000));
+      // Simulate network delay to show skeleton
+      await Future.delayed(const Duration(milliseconds: 1000));
 
-    if (mounted) {
-      setState(() {
-        _allMeals.clear();
-        _allMeals.addAll(meals);
-        _filterMeals();
-        _loadPage();
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _allMeals.clear();
+          _allMeals.addAll(meals);
+          _filterMeals();
+          _loadPage();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading meals: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load meals: $e')),
+        );
+      }
     }
   }
 

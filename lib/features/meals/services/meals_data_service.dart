@@ -8,17 +8,25 @@ import '../../../core/services/secure_delete_service.dart';
 /// Handles initialization of encrypted boxes, CRUD operations,
 /// and secure deletion with multi-pass overwriting.
 class MealsDataService {
+  static final MealsDataService _instance = MealsDataService._internal();
+  factory MealsDataService() => _instance;
+  MealsDataService._internal();
+
   static const String _boxName = 'meals';
 
   /// Secure delete service for multi-pass sensitive data removal
   final SecureDeleteService _secureDeleteService = SecureDeleteService();
 
+  bool _isInitialized = false;
+
   Future<void> init() async {
+    if (_isInitialized) return;
     // Migrate to encryption if needed
     await DatabaseService.migrateBoxToEncryption<Meal>(_boxName);
 
     final cipher = await DatabaseService.getEncryptionCipher();
     await Hive.openLazyBox<Meal>(_boxName, encryptionCipher: cipher);
+    _isInitialized = true;
   }
 
   LazyBox<Meal> get _box => Hive.lazyBox<Meal>(_boxName);

@@ -7,6 +7,10 @@ import '../../../core/services/encryption_service.dart';
 import '../../../core/services/secure_delete_service.dart';
 
 class CalendarDataService {
+  static final CalendarDataService _instance = CalendarDataService._internal();
+  factory CalendarDataService() => _instance;
+  CalendarDataService._internal();
+
   static const String _eventsBoxName = 'calendar_events';
   static const String _symptomsBoxName = 'symptom_logs';
   static const String _cycleProfileBoxName = 'cycle_profile';
@@ -22,8 +26,11 @@ class CalendarDataService {
   // Secure delete service
   final SecureDeleteService _secureDeleteService = SecureDeleteService();
 
+  bool _isInitialized = false;
+
   // Initialize Hive boxes
   Future<void> init() async {
+    if (_isInitialized) return;
     // Migrate boxes to encryption if needed
     await DatabaseService.migrateBoxToEncryption<CalendarEvent>(_eventsBoxName);
     await DatabaseService.migrateBoxToEncryption<SymptomLog>(_symptomsBoxName);
@@ -42,6 +49,7 @@ class CalendarDataService {
 
     // Initialize encryption
     await _encryptionService.initialize();
+    _isInitialized = true;
   }
 
   // ============ Events ============

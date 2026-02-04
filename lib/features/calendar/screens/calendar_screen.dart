@@ -227,17 +227,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _loadData() async {
-    await _dataService.init();
-    final events = await _dataService.getAllEvents();
-    final symptoms = await _dataService.getAllSymptoms();
-    final cycleProfile = await _dataService.getOrCreateCycleProfile();
+    try {
+      await _dataService.init();
+      final events = await _dataService.getAllEvents();
+      final symptoms = await _dataService.getAllSymptoms();
+      final cycleProfile = await _dataService.getOrCreateCycleProfile();
 
-    setState(() {
-      _events = events;
-      _symptoms = symptoms;
-      _cycleProfile = cycleProfile;
-      _isLoading = false;
-    });
+      if (mounted) {
+        setState(() {
+          _events = events;
+          _symptoms = symptoms;
+          _cycleProfile = cycleProfile;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading calendar data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load calendar data: $e')),
+        );
+      }
+    }
 
     // Load filter states after cycle data is available
     await _loadFilterStates();

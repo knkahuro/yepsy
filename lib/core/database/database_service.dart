@@ -158,7 +158,8 @@ class DatabaseService {
 
     try {
       // 1. Try to open with encryption first
-      await Hive.openBox<T>(boxName, encryptionCipher: cipher);
+      final box = await Hive.openBox<T>(boxName, encryptionCipher: cipher);
+      await box.close();
       debugPrint('Box $boxName is already encrypted or empty');
       return;
     } catch (e) {

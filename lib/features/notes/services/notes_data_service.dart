@@ -5,6 +5,10 @@ import '../../../core/services/encryption_service.dart';
 import '../../../core/services/secure_delete_service.dart';
 
 class NotesDataService {
+  static final NotesDataService _instance = NotesDataService._internal();
+  factory NotesDataService() => _instance;
+  NotesDataService._internal();
+
   static const String _boxName = 'notes';
 
   // Encryption service
@@ -13,7 +17,10 @@ class NotesDataService {
   // Secure delete service
   final SecureDeleteService _secureDeleteService = SecureDeleteService();
 
+  bool _isInitialized = false;
+
   Future<void> init() async {
+    if (_isInitialized) return;
     // Migrate to encryption if needed
     await DatabaseService.migrateBoxToEncryption<Note>(_boxName);
 
@@ -22,6 +29,7 @@ class NotesDataService {
 
     // Initialize encryption service
     await _encryptionService.initialize();
+    _isInitialized = true;
   }
 
   LazyBox<Note> get _box => Hive.lazyBox<Note>(_boxName);
