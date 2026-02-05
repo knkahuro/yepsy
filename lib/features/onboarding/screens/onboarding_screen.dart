@@ -35,10 +35,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       color: const Color(0xFF9575CD), // Purple accent
     ),
     OnboardingContent(
-      title: 'Monitor Sleep & Vitality',
+      title: 'Build Healthy Habits',
+      description:
+          'Log meals, hydration, and daily habits to stay on top of your game.',
+      imagePath: 'assets/images/habit.png',
+      color: const Color(0xFFFFB74D), // Orange accent
+    ),
+    OnboardingContent(
+      title: 'Visualize Your Health',
       description:
           'Understand your rest patterns and how they relate to your overall wellbeing.',
-      imagePath: 'assets/images/sleep.png',
+      imagePath: 'assets/images/graph.png',
       color: const Color(0xFF64B5F6), // Blue accent
     ),
     OnboardingContent(
