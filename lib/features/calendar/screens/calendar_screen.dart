@@ -327,7 +327,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       );
                     },
                     selectedBuilder: (context, day, focusedDay) {
-                      final cell = _buildDayCell(day);
+                      final isToday = isSameDay(day, DateTime.now());
+                      final cell = _buildDayCell(day,
+                          isToday: isToday, isSelected: true);
                       return GestureDetector(
                         onDoubleTap: () => _openDayDetailsPage(day),
                         child: cell,
@@ -526,7 +528,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   // Build custom day cell with period tracking colors
-  Widget? _buildDayCell(DateTime day, {bool isToday = false}) {
+  Widget? _buildDayCell(DateTime day,
+      {bool isToday = false, bool isSelected = false}) {
     final isPeriodDay = _isPeriodDay(day);
     final isFertileDay = _isFertileDay(day);
     final isPredictedPeriod = _isPredictedPeriodDay(day);
@@ -535,8 +538,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Color? textColor;
     BoxBorder? border;
 
-    // Apply period/fertile colors only if filters are enabled
-    if (_showPeriods) {
+    // Apply selection color if selected
+    if (isSelected) {
+      backgroundColor = Theme.of(context).colorScheme.primary;
+      textColor = Colors.white;
+    }
+
+    // Apply period/fertile colors only if not selected (or blend?)
+    // For now, let selection override background, but maybe keep some indication?
+    // Following original logic, we apply period colors if enabled.
+    // If selected, we might want to prioritize selection visibility.
+
+    if (!isSelected && _showPeriods) {
       if (isPeriodDay) {
         backgroundColor =
             Theme.of(context).colorScheme.primary.withValues(alpha: 0.3);
@@ -549,7 +562,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     }
 
-    if (_showFertileWindow &&
+    if (!isSelected &&
+        _showFertileWindow &&
         isFertileDay &&
         !isPeriodDay &&
         !isPredictedPeriod) {
@@ -559,14 +573,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // Add border for today's date
     if (isToday) {
+      // If selected, we might use a different border color (e.g. white) or keep primary?
+      // If background is primary (selected), border primary is invisible.
+      // Maybe make border white if selected?
+      final borderColor =
+          isSelected ? Colors.white : Theme.of(context).colorScheme.primary;
+
       border = Border(
-        top: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
-        bottom:
-            BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
-        left:
-            BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
-        right:
-            BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+        top: BorderSide(color: borderColor, width: 2),
+        bottom: BorderSide(color: borderColor, width: 2),
+        left: BorderSide(color: borderColor, width: 2),
+        right: BorderSide(color: borderColor, width: 2),
       );
     }
 
@@ -575,6 +592,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         day.isBefore(DateTime(
             DateTime.now().year, DateTime.now().month, DateTime.now().day))) {
       textColor = Colors.grey.withValues(alpha: 0.5);
+    }
+
+    // Ensure selected text contrast
+    if (isSelected) {
+      textColor = Colors.white;
     }
 
     return Container(
