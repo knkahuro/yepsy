@@ -8,8 +8,8 @@ import '../../features/sleep_tracking/services/sleep_data_service.dart';
 
 import '../../features/notes/models/note.dart';
 import '../../features/notes/services/notes_data_service.dart';
-import '../../features/meals/models/meal.dart';
-import '../../features/meals/services/meals_data_service.dart';
+import '../../features/habits/models/habit.dart';
+import '../../features/habits/services/habit_service.dart';
 
 /// Service for generating sample data for new users.
 ///
@@ -17,14 +17,14 @@ import '../../features/meals/services/meals_data_service.dart';
 /// - Cycle Profile & Symptom Logs
 /// - Sleep logs with analytical data
 /// - Notes with varied moods
-/// - Meals with categories and ratings
+/// - Habits with categories
 /// - Calendar events
 class SampleDataService {
   final CalendarDataService _calendarService = CalendarDataService();
   final SleepDataService _sleepService = SleepDataService();
 
   final NotesDataService _notesService = NotesDataService();
-  final MealsDataService _mealsService = MealsDataService();
+  final HabitService _habitService = HabitService();
 
   /// Initialize all required features and services
   Future<void> _initServices() async {
@@ -35,7 +35,7 @@ class SampleDataService {
       await _calendarService.init();
       await _sleepService.init();
       await _notesService.init();
-      await _mealsService.init();
+      await _habitService.init();
     } catch (e) {
       // If initialization fails, rethrow so we can catch it in UI
       throw Exception('Failed to initialize services for sample data: $e');
@@ -127,35 +127,37 @@ class SampleDataService {
       await _notesService.saveNote(note);
     }
 
-    // 5. Seed Meals (Migrated from hardcoded)
-    final sampleMeals = [
-      Meal(
-        title: 'Supper',
-        description: 'Rice + beef + cabbage',
+    // 5. Seed Habits (Migrated from Meals)
+    final sampleHabits = [
+      Habit(
+        title: 'Morning Standup',
+        description: 'Prepare notes for daily team meeting',
         isFavorite: true,
-        category: 'Dinner',
-        rating: 5,
+        category: 'Work',
         date: now.subtract(const Duration(days: 0)),
+        reminderTime: now.add(const Duration(hours: 1)),
+        frequency: [1, 2, 3, 4, 5], // Mon-Fri
       ),
-      Meal(
-        title: 'Breakfast',
-        description: 'Oatmeal with berries',
+      Habit(
+        title: 'Drink Water',
+        description: 'Glass of water after waking up',
         isFavorite: false,
-        category: 'Breakfast',
-        rating: 4,
+        category: 'Wellness',
         date: now.subtract(const Duration(days: 1)),
+        frequency: [1, 2, 3, 4, 5, 6, 7], // Every day
       ),
-      Meal(
-        title: 'Lunch',
-        description: 'Grilled chicken salad',
+      Habit(
+        title: 'Read Book',
+        description: 'Read 10 pages before bed',
         isFavorite: false,
-        category: 'Lunch',
-        rating: 3,
+        category: 'Productivity',
         date: now.subtract(const Duration(days: 2)),
+        reminderTime: now.add(const Duration(hours: 2)),
+        frequency: [6, 7], // Weekends
       ),
     ];
-    for (var meal in sampleMeals) {
-      await _mealsService.saveMeal(meal);
+    for (var habit in sampleHabits) {
+      await _habitService.saveHabit(habit);
     }
 
     // 6. Seed a few Calendar Events

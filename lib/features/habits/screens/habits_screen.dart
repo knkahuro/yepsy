@@ -1,46 +1,37 @@
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../theme/typography.dart';
 import '../../../shared/widgets/message_bubble.dart';
-import '../models/meal.dart';
-import '../widgets/meal_tile.dart';
+import '../models/habit.dart';
+import '../widgets/habit_tile.dart';
 
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
-import '../../../core/services/image_compression_service.dart';
-import '../services/meals_data_service.dart';
+import '../services/habit_service.dart';
 
-/// Main screen for tracking and managing meals.
-///
-/// Features:
-/// - Categorized filtering (Breakfast, Lunch, Dinner, Snack)
-/// - Search by title or description
-/// - Infinite scroll pagination
-/// - Image picking and automatic compression
-/// - Persistent storage via Hive
-class MealsScreen extends StatefulWidget {
-  const MealsScreen({super.key});
+/// Main screen for tracking and managing habits.
+class HabitsScreen extends StatefulWidget {
+  const HabitsScreen({super.key});
 
   @override
-  State<MealsScreen> createState() => _MealsScreenState();
+  State<HabitsScreen> createState() => _HabitsScreenState();
 }
 
-class _MealsScreenState extends State<MealsScreen> {
-  final MealsDataService _dataService = MealsDataService();
-  final List<Meal> _allMeals = [];
+class _HabitsScreenState extends State<HabitsScreen>
+    with WidgetsBindingObserver {
+  final HabitService _dataService = HabitService();
+  final List<Habit> _allHabits = [];
 
-  List<Meal> _filteredMeals = [];
-  List<Meal> _displayedMeals = []; // Paginated subset
+  List<Habit> _filteredHabits = [];
+  List<Habit> _displayedHabits = []; // Paginated subset
   String _selectedCategory = 'All';
   String _searchQuery = '';
   final List<String> _categories = [
     'All',
-    'Breakfast',
-    'Lunch',
-    'Dinner',
-    'Snack'
+    'Work',
+    'Productivity',
+    'Wellness',
+    'Other'
   ];
 
   bool _isLoading = true;
@@ -50,57 +41,62 @@ class _MealsScreenState extends State<MealsScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _hasMoreData = true;
 
-  // Image compression service
-  final ImageCompressionService _imageCompressionService =
-      ImageCompressionService();
-
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
-    _loadMeals();
+    _loadHabits();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadHabits();
+    }
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoadingMore && _hasMoreData) {
-        _loadMoreMeals();
+        _loadMoreHabits();
       }
     }
   }
 
-  Future<void> _loadMeals() async {
+  Future<void> _loadHabits() async {
     try {
       await _dataService.init();
-      final meals = await _dataService.getAllMeals();
+      final habits = await _dataService.getAllHabits();
 
       // Simulate network delay to show skeleton
       await Future.delayed(const Duration(milliseconds: 1000));
 
       if (mounted) {
         setState(() {
-          _allMeals.clear();
-          _allMeals.addAll(meals);
-          _filterMeals();
+          _allHabits.clear();
+          _allHabits.addAll(habits);
+          _filterHabits();
           _loadPage();
           _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('Error loading meals: $e');
+      debugPrint('Error loading habits: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load meals: $e')),
+          SnackBar(content: Text('Failed to load habits: $e')),
         );
       }
     }
@@ -110,23 +106,23 @@ class _MealsScreenState extends State<MealsScreen> {
     final startIndex = _currentPage * _pageSize;
     final endIndex = startIndex + _pageSize;
 
-    if (startIndex >= _filteredMeals.length) {
+    if (startIndex >= _filteredHabits.length) {
       setState(() => _hasMoreData = false);
       return;
     }
 
     setState(() {
-      _displayedMeals.addAll(
-        _filteredMeals.sublist(
+      _displayedHabits.addAll(
+        _filteredHabits.sublist(
           startIndex,
-          endIndex > _filteredMeals.length ? _filteredMeals.length : endIndex,
+          endIndex > _filteredHabits.length ? _filteredHabits.length : endIndex,
         ),
       );
-      _hasMoreData = endIndex < _filteredMeals.length;
+      _hasMoreData = endIndex < _filteredHabits.length;
     });
   }
 
-  Future<void> _loadMoreMeals() async {
+  Future<void> _loadMoreHabits() async {
     if (_isLoadingMore) return;
 
     setState(() => _isLoadingMore = true);
@@ -138,21 +134,33 @@ class _MealsScreenState extends State<MealsScreen> {
     if (mounted) setState(() => _isLoadingMore = false);
   }
 
-  void _filterMeals() {
+  void _filterHabits() {
+    final now = DateTime.now();
     setState(() {
-      _filteredMeals = _allMeals.where((m) {
+      _filteredHabits = _allHabits.where((m) {
         final matchesCategory =
             _selectedCategory == 'All' || m.category == _selectedCategory;
         final matchesSearch = m.title
                 .toLowerCase()
                 .contains(_searchQuery.toLowerCase()) ||
             m.description.toLowerCase().contains(_searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
+        final isDueToday = m.frequency.contains(now.weekday);
+        return matchesCategory && matchesSearch && isDueToday;
       }).toList();
+
+      // Sort: Pending first, then Completed
+      _filteredHabits.sort((a, b) {
+        final aCompleted = _dataService.isCompletedOnDate(a, now);
+        final bCompleted = _dataService.isCompletedOnDate(b, now);
+        if (aCompleted == bCompleted) {
+          return 0;
+        }
+        return aCompleted ? 1 : -1;
+      });
 
       // Reset pagination
       _currentPage = 0;
-      _displayedMeals = [];
+      _displayedHabits = [];
       _hasMoreData = true;
     });
   }
@@ -165,7 +173,7 @@ class _MealsScreenState extends State<MealsScreen> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
         title: Text(
-          'Meals',
+          'Habits',
           style: AppTypography.displayTextTheme.titleLarge?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -173,7 +181,7 @@ class _MealsScreenState extends State<MealsScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () => _showMealForm(context),
+            onPressed: () => _showHabitForm(context),
             icon: const Icon(Icons.add_box_outlined, color: Colors.white),
           ),
         ],
@@ -239,7 +247,7 @@ class _MealsScreenState extends State<MealsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Image.asset(
-                            'assets/images/eat.png',
+                            'assets/images/habit.png',
                             width: 120,
                             height: 120,
                             fit: BoxFit.contain,
@@ -247,7 +255,7 @@ class _MealsScreenState extends State<MealsScreen> {
                           const SizedBox(width: 16),
                           const Expanded(
                             child: MessageBubble(
-                              message: 'Mmmmm...yummy',
+                              message: 'New year, new me!',
                             ),
                           ),
                         ],
@@ -257,11 +265,11 @@ class _MealsScreenState extends State<MealsScreen> {
                       TextField(
                         onChanged: (value) {
                           _searchQuery = value;
-                          _filterMeals();
+                          _filterHabits();
                           _loadPage(); // Load first page after filter
                         },
                         decoration: InputDecoration(
-                          hintText: 'Search meals...',
+                          hintText: 'Search habits...',
                           prefixIcon:
                               const Icon(Icons.search, color: Colors.grey),
                           filled: true,
@@ -289,7 +297,7 @@ class _MealsScreenState extends State<MealsScreen> {
                                 onSelected: (bool selected) {
                                   setState(() {
                                     _selectedCategory = category;
-                                    _filterMeals();
+                                    _filterHabits();
                                     _loadPage(); // Load first page after filter
                                   });
                                 },
@@ -325,19 +333,19 @@ class _MealsScreenState extends State<MealsScreen> {
                   ),
                 ),
                 Expanded(
-                  child: _displayedMeals.isEmpty
+                  child: _displayedHabits.isEmpty
                       ? const EmptyStateWidget(
-                          message: 'No meals found. Time to eat?',
-                          icon: Icons.restaurant_outlined,
+                          message: 'No habits yet. Start a new one!',
+                          icon: Icons.check_circle_outline,
                         )
                       : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          itemCount:
-                              _displayedMeals.length + (_isLoadingMore ? 1 : 0),
+                          itemCount: _displayedHabits.length +
+                              (_isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
                             // Show loading indicator at the end
-                            if (index == _displayedMeals.length) {
+                            if (index == _displayedHabits.length) {
                               return const Padding(
                                 padding: EdgeInsets.all(16),
                                 child: Center(
@@ -346,9 +354,9 @@ class _MealsScreenState extends State<MealsScreen> {
                               );
                             }
 
-                            final meal = _displayedMeals[index];
+                            final habit = _displayedHabits[index];
                             return Dismissible(
-                              key: ValueKey(meal.id),
+                              key: ValueKey(habit.id),
                               background: Container(
                                 alignment: Alignment.centerRight,
                                 padding: const EdgeInsets.only(right: 20),
@@ -365,38 +373,68 @@ class _MealsScreenState extends State<MealsScreen> {
                                 ),
                               ),
                               onDismissed: (direction) async {
-                                final deletedMeal = meal;
+                                final deletedHabit = habit;
+
+                                // Optimistically remove from UI
                                 setState(() {
-                                  _allMeals.remove(meal);
-                                  _filterMeals();
+                                  _allHabits.remove(habit);
+                                  _filterHabits();
                                   _loadPage();
                                 });
-                                await _dataService.deleteMeal(meal.id);
-                                if (!context.mounted) return;
+
+                                // Show SnackBar immediately
                                 ScaffoldMessenger.of(context).clearSnackBars();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    duration: const Duration(seconds: 2),
-                                    content: const Text('Meal deleted'),
+                                    duration: const Duration(seconds: 4),
+                                    content: const Text('Habit deleted'),
                                     action: SnackBarAction(
                                       label: 'Undo',
                                       onPressed: () async {
+                                        // Restore to UI
                                         setState(() {
-                                          _allMeals.add(deletedMeal);
-                                          _filterMeals();
+                                          _allHabits.add(deletedHabit);
+                                          _filterHabits();
                                           _loadPage();
                                         });
+                                        // Re-save to DB
                                         await _dataService
-                                            .saveMeal(deletedMeal);
+                                            .saveHabit(deletedHabit);
                                       },
                                     ),
                                   ),
                                 );
+
+                                // Persist deletion in background
+                                try {
+                                  await _dataService.deleteHabit(habit.id);
+                                } catch (e) {
+                                  debugPrint('Error deleting habit: $e');
+                                  // Optionally show error snackbar or restore item
+                                }
                               },
-                              child: MealTile(
-                                meal: meal,
+                              child: HabitTile(
+                                habit: habit,
+                                isCompleted: _dataService.isCompletedOnDate(
+                                    habit, DateTime.now()),
+                                onToggleCompletion: (val) async {
+                                  final updatedHabit =
+                                      await _dataService.toggleCompletion(
+                                          habit.id, DateTime.now());
+                                  if (updatedHabit != null) {
+                                    setState(() {
+                                      final index = _allHabits
+                                          .indexWhere((h) => h.id == habit.id);
+                                      if (index != -1) {
+                                        _allHabits[index] = updatedHabit;
+                                      }
+                                      _filterHabits();
+                                      _loadPage();
+                                    });
+                                  }
+                                },
                                 onEdit: () =>
-                                    _showMealForm(context, mealToEdit: meal),
+                                    _showHabitForm(context, habitToEdit: habit),
                               ),
                             );
                           },
@@ -407,17 +445,61 @@ class _MealsScreenState extends State<MealsScreen> {
     );
   }
 
-  void _showMealForm(BuildContext context, {Meal? mealToEdit}) {
-    final titleController =
-        TextEditingController(text: mealToEdit?.title ?? '');
-    final descController =
-        TextEditingController(text: mealToEdit?.description ?? '');
-    String selectedCategory =
-        mealToEdit?.category ?? _categories.firstWhere((c) => c != 'All');
-    double rating = (mealToEdit?.rating ?? 3).toDouble();
+  // Weekday Selector Widget
+  Widget _buildWeekdaySelector(
+      List<int> selectedDays, Function(List<int>) onChanged) {
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(7, (index) {
+        final dayIndex = index + 1;
+        final isSelected = selectedDays.contains(dayIndex);
+        return GestureDetector(
+          onTap: () {
+            final newSelection = List<int>.from(selectedDays);
+            if (isSelected) {
+              if (newSelection.length > 1) newSelection.remove(dayIndex);
+            } else {
+              newSelection.add(dayIndex);
+              newSelection.sort();
+            }
+            onChanged(newSelection);
+          },
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.transparent,
+              shape: BoxShape.circle,
+              border:
+                  isSelected ? null : Border.all(color: Colors.grey.shade400),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              days[index],
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
 
-    String? selectedImagePath = mealToEdit?.imagePath;
-    final ImagePicker picker = ImagePicker();
+  void _showHabitForm(BuildContext context, {Habit? habitToEdit}) {
+    final titleController =
+        TextEditingController(text: habitToEdit?.title ?? '');
+    final descController =
+        TextEditingController(text: habitToEdit?.description ?? '');
+    String selectedCategory =
+        habitToEdit?.category ?? _categories.firstWhere((c) => c != 'All');
+
+    DateTime? reminderTime = habitToEdit?.reminderTime;
+    List<int> frequency = habitToEdit?.frequency ?? [1, 2, 3, 4, 5, 6, 7];
 
     showModalBottomSheet(
       context: context,
@@ -441,110 +523,8 @@ class _MealsScreenState extends State<MealsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      mealToEdit == null ? 'Log Meal' : 'Edit Meal',
+                      habitToEdit == null ? 'Log Habit' : 'Edit Habit',
                       style: AppTypography.displayTextTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    // Image Picker Section
-                    GestureDetector(
-                      onTap: () async {
-                        final source = await showDialog<ImageSource>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Choose Photo Source'),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.camera_alt),
-                                  title: const Text('Camera'),
-                                  onTap: () =>
-                                      Navigator.pop(ctx, ImageSource.camera),
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.photo_library),
-                                  title: const Text('Gallery'),
-                                  onTap: () =>
-                                      Navigator.pop(ctx, ImageSource.gallery),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-
-                        if (source != null) {
-                          final XFile? image =
-                              await picker.pickImage(source: source);
-                          if (image != null) {
-                            // Show loading indicator
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Compressing image...'),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                            }
-
-                            // Compress the image
-                            final compressedPath =
-                                await _imageCompressionService.compressImage(
-                              File(image.path),
-                              quality: ImageCompressionService.qualityMedium,
-                            );
-
-                            setModalState(() {
-                              selectedImagePath = compressedPath;
-                            });
-                          }
-                        }
-                      },
-                      child: Container(
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[300]!),
-                          image: selectedImagePath != null
-                              ? DecorationImage(
-                                  image:
-                                      selectedImagePath!.startsWith('assets/')
-                                          ? AssetImage(selectedImagePath!)
-                                              as ImageProvider
-                                          : FileImage(File(selectedImagePath!)),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: selectedImagePath == null
-                            ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_a_photo_outlined,
-                                      color: Colors.grey[400], size: 30),
-                                  const SizedBox(height: 4),
-                                  Text('Add Photo',
-                                      style:
-                                          TextStyle(color: Colors.grey[500])),
-                                ],
-                              )
-                            : Align(
-                                alignment: Alignment.topRight,
-                                child: IconButton(
-                                  onPressed: () {
-                                    setModalState(() {
-                                      selectedImagePath = null;
-                                    });
-                                  },
-                                  icon: const CircleAvatar(
-                                    backgroundColor: Colors.white,
-                                    radius: 12,
-                                    child: Icon(Icons.close,
-                                        size: 16, color: Colors.red),
-                                  ),
-                                ),
-                              ),
-                      ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -582,60 +562,108 @@ class _MealsScreenState extends State<MealsScreen> {
                         );
                       }).toList(),
                     ),
+                    const SizedBox(height: 16),
+                    // Frequency Selector
+                    const Text('Schedule',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    _buildWeekdaySelector(frequency, (newFreq) {
+                      setModalState(() => frequency = newFreq);
+                    }),
                     const SizedBox(height: 12),
-                    Text('Rating: ${rating.toInt()} Stars'),
-                    Slider(
-                      value: rating,
-                      min: 1,
-                      max: 5,
-                      divisions: 4,
-                      label: rating.toInt().toString(),
-                      onChanged: (value) {
-                        setModalState(() {
-                          rating = value;
-                        });
+                    // Reminder Picker
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.notifications,
+                          color: Theme.of(context).colorScheme.primary),
+                      title: Text(reminderTime == null
+                          ? 'Set Reminder'
+                          : 'Reminder: ${reminderTime!.hour.toString().padLeft(2, '0')}:${reminderTime!.minute.toString().padLeft(2, '0')}'),
+                      trailing: reminderTime != null
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setModalState(() {
+                                  reminderTime = null;
+                                });
+                              },
+                            )
+                          : const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          setModalState(() {
+                            final now = DateTime.now();
+                            reminderTime = DateTime(
+                              now.year,
+                              now.month,
+                              now.day,
+                              time.hour,
+                              time.minute,
+                            );
+                          });
+                        }
                       },
-                      activeColor: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () async {
+                        debugPrint('Save button pressed');
                         if (titleController.text.isNotEmpty) {
-                          Meal savedMeal;
-                          if (mealToEdit == null) {
-                            savedMeal = Meal(
+                          debugPrint('Title is valid: ${titleController.text}');
+                          Habit savedHabit;
+                          if (habitToEdit == null) {
+                            debugPrint('Creating new habit');
+                            savedHabit = Habit(
                               title: titleController.text,
                               description: descController.text,
                               category: selectedCategory,
-                              rating: rating.toInt(),
-                              imagePath: selectedImagePath,
+                              reminderTime: reminderTime,
+                              frequency: frequency,
                             );
                             setState(() {
-                              _allMeals.add(savedMeal);
+                              _allHabits.add(savedHabit);
                             });
                           } else {
-                            savedMeal = mealToEdit.copyWith(
+                            debugPrint(
+                                'Updating existing habit: ${habitToEdit.id}');
+                            savedHabit = habitToEdit.copyWith(
                               title: titleController.text,
                               description: descController.text,
                               category: selectedCategory,
-                              rating: rating.toInt(),
-                              imagePath: selectedImagePath,
+                              reminderTime: reminderTime,
+                              frequency: frequency,
                             );
                             setState(() {
-                              final index = _allMeals.indexOf(mealToEdit);
+                              final index = _allHabits.indexOf(habitToEdit);
                               if (index != -1) {
-                                _allMeals[index] = savedMeal;
+                                _allHabits[index] = savedHabit;
                               }
                             });
                           }
 
                           setState(() {
-                            _filterMeals();
+                            _filterHabits();
                             _loadPage();
                           });
 
-                          await _dataService.saveMeal(savedMeal);
-                          if (context.mounted) Navigator.pop(context);
+                          debugPrint('Saving habit to database...');
+                          await _dataService.saveHabit(savedHabit);
+                          debugPrint('Habit saved.');
+                          if (context.mounted) {
+                            debugPrint('Closing modal');
+                            Navigator.pop(context);
+                          }
+                        } else {
+                          debugPrint('Title is empty');
+                          // Show error if title is empty
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Please enter a title')),
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -644,7 +672,7 @@ class _MealsScreenState extends State<MealsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: Text(
-                          mealToEdit == null ? 'Save Meal' : 'Update Meal'),
+                          habitToEdit == null ? 'Save Habit' : 'Update Habit'),
                     ),
                     const SizedBox(height: 16),
                   ],

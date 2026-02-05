@@ -12,7 +12,7 @@ import 'core/database/database_service.dart';
 import 'core/services/biometric_service.dart';
 import 'features/auth/screens/lock_screen.dart';
 import 'features/notes/models/note.dart';
-import 'features/meals/models/meal.dart';
+import 'features/habits/models/habit.dart';
 import 'features/sleep_tracking/models/sleep_log.dart';
 
 void main() async {
@@ -29,7 +29,7 @@ void main() async {
 
   Hive.registerAdapter(NoteAdapter());
   Hive.registerAdapter(MoodAdapter());
-  Hive.registerAdapter(MealAdapter());
+  Hive.registerAdapter(HabitAdapter());
   Hive.registerAdapter(SleepLogAdapter());
 
   MenstrualCycleWidget.init(
@@ -43,7 +43,9 @@ void main() async {
   // Initialize notifications
   await NotificationService().initialize(
     onNotificationClick: (payload) {
-      if (payload == 'period_reminder' ||
+      if (payload != null && payload.startsWith('habit_')) {
+        appRouter.go('/habits');
+      } else if (payload == 'period_reminder' ||
           payload == 'ovulation_reminder' ||
           payload == 'test') {
         appRouter.go('/calendar');

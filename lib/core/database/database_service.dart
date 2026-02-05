@@ -70,7 +70,7 @@ class DatabaseService {
     // 3. Organizing data efficiently
 
     // Compact all existing boxes to optimize storage
-    final boxNames = ['calendar_events', 'sleep_logs', 'notes', 'meals'];
+    final boxNames = ['calendar_events', 'sleep_logs', 'notes', 'habits'];
     for (final boxName in boxNames) {
       if (Hive.isBoxOpen(boxName)) {
         final box = Hive.box(boxName);
@@ -113,7 +113,7 @@ class DatabaseService {
       'calendar_events',
       'sleep_logs',
       'notes',
-      'meals',
+      'habits',
       'settings'
     ];
 
@@ -138,7 +138,7 @@ class DatabaseService {
       'calendar_events',
       'sleep_logs',
       'notes',
-      'meals',
+      'habits',
       'settings',
       'cycle_profile',
       'symptom_logs'

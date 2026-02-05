@@ -1,37 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'meal.dart';
+part of 'habit.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class MealAdapter extends TypeAdapter<Meal> {
+class HabitAdapter extends TypeAdapter<Habit> {
   @override
   final int typeId = 5;
 
   @override
-  Meal read(BinaryReader reader) {
+  Habit read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Meal(
+    return Habit(
       id: fields[0] as String?,
       title: fields[1] as String,
       description: fields[2] as String,
       isFavorite: fields[3] as bool,
-      imagePath: fields[4] as String?,
       category: fields[5] as String,
-      rating: fields[6] as int,
       date: fields[7] as DateTime?,
+      reminderTime: fields[8] as DateTime?,
+      completedDates: (fields[9] as List?)?.cast<DateTime>(),
+      frequency: (fields[10] as List?)?.cast<int>(),
     );
   }
 
   @override
-  void write(BinaryWriter writer, Meal obj) {
+  void write(BinaryWriter writer, Habit obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -40,14 +41,16 @@ class MealAdapter extends TypeAdapter<Meal> {
       ..write(obj.description)
       ..writeByte(3)
       ..write(obj.isFavorite)
-      ..writeByte(4)
-      ..write(obj.imagePath)
       ..writeByte(5)
       ..write(obj.category)
-      ..writeByte(6)
-      ..write(obj.rating)
       ..writeByte(7)
-      ..write(obj.date);
+      ..write(obj.date)
+      ..writeByte(8)
+      ..write(obj.reminderTime)
+      ..writeByte(9)
+      ..write(obj.completedDates)
+      ..writeByte(10)
+      ..write(obj.frequency);
   }
 
   @override
@@ -56,7 +59,7 @@ class MealAdapter extends TypeAdapter<Meal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is MealAdapter &&
+      other is HabitAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

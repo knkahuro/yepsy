@@ -1,18 +1,18 @@
 import '../../features/calendar/services/calendar_data_service.dart';
 import '../../features/notes/services/notes_data_service.dart';
-import '../../features/meals/services/meals_data_service.dart';
+import '../../features/habits/services/habit_service.dart';
 import '../../features/sleep_tracking/services/sleep_data_service.dart';
 
 class StreakService {
   final CalendarDataService _calendarService = CalendarDataService();
   final NotesDataService _notesService = NotesDataService();
-  final MealsDataService _mealsService = MealsDataService();
+  final HabitService _habitService = HabitService();
   final SleepDataService _sleepService = SleepDataService();
 
   Future<void> _initServices() async {
     await _calendarService.init();
     await _notesService.init();
-    await _mealsService.init();
+    await _habitService.init();
     await _sleepService.init();
   }
 
@@ -54,16 +54,16 @@ class StreakService {
     return streak;
   }
 
-  /// Checks if there is any activity (note, meal, symptom, or sleep log) on a specific day.
+  /// Checks if there is any activity (note, habit, symptom, or sleep log) on a specific day.
   Future<bool> _hasActivityOnDate(DateTime date) async {
     // 1. Check Notes
     final notes = await _notesService.getAllNotes();
     final hasNote = notes.any((n) => _isSameDay(n.date, date));
     if (hasNote) return true;
 
-    // 2. Check Meals
-    final meals = await _mealsService.getAllMeals();
-    if (meals.any((m) => _isSameDay(m.date, date))) return true;
+    // 2. Check Habits
+    final habits = await _habitService.getAllHabits();
+    if (habits.any((m) => _isSameDay(m.date, date))) return true;
 
     // 3. Check Symptoms & Events
     final symptoms = await _calendarService.getAllSymptoms();

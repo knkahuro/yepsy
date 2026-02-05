@@ -49,7 +49,7 @@ class EncryptionService {
 
   /// Encrypt text
   String encrypt(String plainText) {
-    if (_encrypter == null || _iv == null) {
+    if (_encrypter == null) {
       debugPrint('Encryption not initialized, returning plain text');
       return plainText;
     }
@@ -59,8 +59,11 @@ class EncryptionService {
     }
 
     try {
-      final encrypted = _encrypter!.encrypt(plainText, iv: _iv!);
-      return encrypted.base64;
+      // Generate a comprehensive IV for this specific encryption
+      final iv = enc.IV.fromLength(16);
+      final encrypted = _encrypter!.encrypt(plainText, iv: iv);
+      // Prepend IV to ciphertext for storage
+      return "${iv.base64}:${encrypted.base64}";
     } catch (e) {
       debugPrint('Error encrypting text: $e');
       return plainText;
@@ -69,7 +72,7 @@ class EncryptionService {
 
   /// Decrypt text
   String decrypt(String encryptedText) {
-    if (_encrypter == null || _iv == null) {
+    if (_encrypter == null) {
       debugPrint('Encryption not initialized, returning encrypted text as-is');
       return encryptedText;
     }
@@ -79,11 +82,27 @@ class EncryptionService {
     }
 
     try {
-      final encrypted = enc.Encrypted.fromBase64(encryptedText);
-      return _encrypter!.decrypt(encrypted, iv: _iv!);
+      // Check for IV:Ciphertext format
+      if (encryptedText.contains(':')) {
+        final parts = encryptedText.split(':');
+        if (parts.length == 2) {
+          final iv = enc.IV.fromBase64(parts[0]);
+          final encrypted = enc.Encrypted.fromBase64(parts[1]);
+          return _encrypter!.decrypt(encrypted, iv: iv);
+        }
+      }
+
+      // Fallback: Try decrypting as legacy (using session IV - unreliable but worth a shot)
+      // or assume it's plain text if it fails.
+      if (_iv != null) {
+        final encrypted = enc.Encrypted.fromBase64(encryptedText);
+        return _encrypter!.decrypt(encrypted, iv: _iv!);
+      }
+
+      return encryptedText;
     } catch (e) {
-      // If decryption fails, text might not be encrypted
-      debugPrint('Error decrypting text (might be plain text): $e');
+      // If decryption fails, text might not be encrypted (plain text)
+      // debugPrint('Error decrypting text (might be plain text): $e');
       return encryptedText;
     }
   }
@@ -112,12 +131,17 @@ class EncryptionService {
     await initialize();
   }
 
-  /// Check if text appears to be encrypted (base64 format)
+  /// Check if text appears to be encrypted (base64 format with optional IV prefix)
   bool isEncrypted(String text) {
     if (text.isEmpty) return false;
 
+    if (text.contains(':')) {
+      final parts = text.split(':');
+      return parts.length == 2;
+    }
+
     try {
-      // Try to decode as base64
+      // Try to decode as base64 (Legacy check)
       enc.Encrypted.fromBase64(text);
       return true;
     } catch (e) {

@@ -76,4 +76,60 @@ class NotesDataService {
   Future<void> clearAll() async {
     await _box.clear();
   }
+
+  /// Get mood history for the last [days] days
+  /// Returns a Map<DateTime, double> where key is date and value is average mood score (1-5)
+  Future<Map<DateTime, double>> getMoodHistory(int days) async {
+    final Map<DateTime, List<double>> dailyScores = {};
+    final now = DateTime.now();
+    final cutoff = now.subtract(Duration(days: days));
+
+    // Mood Score Mapping (Percentage 20-100%)
+    double getMoodScore(Mood mood) {
+      switch (mood) {
+        case Mood.excited:
+          return 100.0;
+        case Mood.happy:
+          return 80.0;
+        case Mood.neutral:
+          return 60.0;
+        case Mood.tired:
+          return 40.0;
+        case Mood.sad:
+          return 20.0;
+      }
+    }
+
+    for (var key in _box.keys) {
+      final note = await _box.get(key);
+      if (note != null && note.date != null && note.mood != null) {
+        if (note.date!.isAfter(cutoff)) {
+          final normalizedDate =
+              DateTime(note.date!.year, note.date!.month, note.date!.day);
+
+          if (!dailyScores.containsKey(normalizedDate)) {
+            dailyScores[normalizedDate] = [];
+          }
+          dailyScores[normalizedDate]!.add(getMoodScore(note.mood!));
+        }
+      }
+    }
+
+    // Calculate averages
+    final Map<DateTime, double> history = {};
+
+    // Initialize empty days with 0.0 (or skip, but 0 helps graph)
+    for (int i = 0; i < days; i++) {
+      final d = now.subtract(Duration(days: i));
+      final normalizedDate = DateTime(d.year, d.month, d.day);
+      history[normalizedDate] = 0.0;
+    }
+
+    dailyScores.forEach((date, scores) {
+      final avg = scores.reduce((a, b) => a + b) / scores.length;
+      history[date] = avg;
+    });
+
+    return history;
+  }
 }

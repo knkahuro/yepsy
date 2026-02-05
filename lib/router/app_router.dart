@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../features/notes/screens/notes_screen.dart';
-import '../features/meals/screens/meals_screen.dart';
+import '../features/habits/screens/habits_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
-import '../features/sleep_tracking/screens/sleep_tracking_screen.dart';
+import '../features/analytics/screens/analytics_screen.dart';
 
 import '../features/profile/screens/profile_screen.dart';
 import '../features/calendar/screens/day_details_page.dart';
@@ -58,8 +58,8 @@ final GoRouter appRouter = GoRouter(
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/meals',
-              builder: (context, state) => const MealsScreen(),
+              path: '/habits',
+              builder: (context, state) => const HabitsScreen(),
             ),
           ],
         ),
@@ -96,12 +96,12 @@ final GoRouter appRouter = GoRouter(
                 ]),
           ],
         ),
-        // Sleep Tab
+        // Analytics Tab
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/sleep',
-              builder: (context, state) => const SleepTrackingScreen(),
+              path: '/analytics',
+              builder: (context, state) => const AnalyticsScreen(),
             ),
           ],
         ),

@@ -1,10 +1,10 @@
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-part 'meal.g.dart';
+part 'habit.g.dart';
 
 @HiveType(typeId: 5)
-class Meal {
+class Habit {
   @HiveField(0)
   final String id;
   @HiveField(1)
@@ -13,46 +13,53 @@ class Meal {
   final String description;
   @HiveField(3)
   final bool isFavorite;
-  @HiveField(4)
-  final String? imagePath;
   @HiveField(5)
   final String category;
-  @HiveField(6)
-  final int rating;
   @HiveField(7)
   final DateTime date;
+  @HiveField(8)
+  final DateTime? reminderTime;
+  @HiveField(9)
+  final List<DateTime> completedDates;
+  @HiveField(10)
+  final List<int> frequency;
 
-  Meal({
+  Habit({
     String? id,
     required this.title,
     required this.description,
     this.isFavorite = false,
-    this.imagePath,
     this.category = 'Other',
-    this.rating = 0,
     DateTime? date,
+    this.reminderTime,
+    List<DateTime>? completedDates,
+    List<int>? frequency,
   })  : id = id ?? const Uuid().v4(),
-        date = date ?? DateTime.now();
+        date = date ?? DateTime.now(),
+        completedDates = completedDates ?? [],
+        frequency = frequency ?? [1, 2, 3, 4, 5, 6, 7];
 
-  Meal copyWith({
+  Habit copyWith({
     String? id,
     String? title,
     String? description,
     bool? isFavorite,
-    String? imagePath,
     String? category,
-    int? rating,
     DateTime? date,
+    DateTime? reminderTime,
+    List<DateTime>? completedDates,
+    List<int>? frequency,
   }) {
-    return Meal(
+    return Habit(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
       isFavorite: isFavorite ?? this.isFavorite,
-      imagePath: imagePath ?? this.imagePath,
       category: category ?? this.category,
-      rating: rating ?? this.rating,
       date: date ?? this.date,
+      reminderTime: reminderTime ?? this.reminderTime,
+      completedDates: completedDates ?? this.completedDates,
+      frequency: frequency ?? this.frequency,
     );
   }
 }

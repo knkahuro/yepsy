@@ -188,6 +188,54 @@ class CalendarDataService {
     return symptom.copyWith(notes: decryptedNotes);
   }
 
+  /// Get health score history (percentage) for the last [days] days
+  /// Returns a Map<DateTime, double> where key is date and value is health score (100 - symptom intensity)
+  Future<Map<DateTime, double>> getSymptomHistory(int days) async {
+    final Map<DateTime, double> history = {};
+    final now = DateTime.now();
+    final cutoff = now.subtract(Duration(days: days));
+
+    // Initialize days with 100.0 (Perfect Health default)
+    // If no log exists, we assume good health
+    for (int i = 0; i < days; i++) {
+      final d = now.subtract(Duration(days: i));
+      final normalizedDate = DateTime(d.year, d.month, d.day);
+      history[normalizedDate] = 100.0;
+    }
+
+    // Populate with wellness score
+    for (var key in _symptomsBox.keys) {
+      final symptom = await _symptomsBox.get(key);
+      if (symptom != null) {
+        if (symptom.date.isAfter(cutoff)) {
+          final normalizedDate =
+              DateTime(symptom.date.year, symptom.date.month, symptom.date.day);
+
+          final pain = (symptom.painLevel ?? 0).toDouble(); // 0-10
+          final flow = (symptom.flowIntensity ?? 0).toDouble(); // 0-5
+          final totalIntensity = pain + flow;
+
+          // Max possible intensity assumed around 15 (10 pain + 5 flow)
+          // We map this to a percentage deduction
+          // 15 intensity = 100% deduction -> 0% Health
+          // 0 intensity = 0% deduction -> 100% Health
+          const maxIntensity = 15.0;
+          final deduction = (totalIntensity / maxIntensity) * 100.0;
+
+          // Wellness Score
+          final wellnessScore = (100.0 - deduction).clamp(0.0, 100.0);
+
+          // If multiple logs, take the lowest wellness score (highest intensity)
+          if (wellnessScore < (history[normalizedDate] ?? 100.0)) {
+            history[normalizedDate] = wellnessScore;
+          }
+        }
+      }
+    }
+
+    return history;
+  }
+
   // ============ Cycle Profile ============
 
   Future<void> saveCycleProfile(UserCycleProfile profile) async {

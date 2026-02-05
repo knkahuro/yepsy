@@ -16,16 +16,17 @@ Yepsy is a premium, privacy-focused wellness application designed to help you tr
 - **Persistent Storage**: All notes are saved securely via `NotesDataService`.
 - **Pinning**: Keep important notes at the top of your list.
 
-### Meal Tracking
+### Habit Tracking
 
-- **Nutrition Log**: Track what you eat with descriptions and ratings.
-- **Image Compression**: Automatically compresses high-resolution meal photos to save storage space without losing quality.
-- **Categorization**: Categorize meals by Breakfast, Lunch, Dinner, or Snack.
+- **Habit Builder**: Create custom habits with scheduled days and daily reminders.
+- **Smart Notifications**: Interactive notifications let you snooze or complete habits instantly.
+- **Categorization**: Organize by Work, Wellness, Productivity, and more.
 
-### Sleep Insights
+### Analytics Dashboard
 
-- **Sleep Log**: Track bedtime, wake time, and sleep quality.
-- **Analytical Graphs**: Visualize your sleep patterns over time to improve your rest.
+- **Unified Scoring**: Track Habits, Mood, and Health on a standardized 0-100% scale.
+- **Trend Analysis**: Visualize your consistency and find correlations between your lifestyle and well-being.
+- **Health & Mood**: Monitor symptom intensity and emotional trends over time.
 
 ### Privacy & Security
 

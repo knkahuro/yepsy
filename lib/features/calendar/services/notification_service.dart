@@ -3,13 +3,27 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cycle_data.dart';
+import '../../habits/models/habit.dart';
 import '../utils/cycle_calculator.dart';
+import 'package:flutter/widgets.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../../core/database/database_service.dart';
 import '../../../core/services/streak_service.dart';
+
+// Top-level background handler
+@pragma('vm:entry-point')
+void notificationTapBackground(NotificationResponse notificationResponse) {
+  // logic to handle action
+  NotificationService().handleBackgroundAction(notificationResponse);
+}
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
+
+  static const String actionSnooze = 'snooze_action';
+  static const String actionComplete = 'complete_action';
 
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
@@ -42,8 +56,14 @@ class NotificationService {
     await _notifications.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (response) {
-        onNotificationClick?.call(response.payload);
+        if (response.actionId == actionSnooze ||
+            response.actionId == actionComplete) {
+          handleBackgroundAction(response);
+        } else {
+          onNotificationClick?.call(response.payload);
+        }
       },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
 
     _initialized = true;
@@ -411,6 +431,95 @@ class NotificationService {
   }
 
   // Save notification preferences
+  // Schedule habit reminder
+  Future<void> scheduleHabitReminder(Habit habit) async {
+    if (habit.reminderTime == null) return;
+
+    final now = DateTime.now();
+    // Use the reminder time's hour and minute
+    var scheduledDate = tz.TZDateTime.from(
+      DateTime(
+        now.year,
+        now.month,
+        now.day,
+        habit.reminderTime!.hour,
+        habit.reminderTime!.minute,
+      ),
+      tz.local,
+    );
+
+    // If time has passed today, schedule for tomorrow
+    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+
+    const androidDetails = AndroidNotificationDetails(
+      'habit_reminders',
+      'Habit Reminders',
+      channelDescription: 'Reminders for your habits',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/launcher_icon',
+      actions: [
+        AndroidNotificationAction(actionSnooze, 'Snooze 10m'),
+        AndroidNotificationAction(actionComplete, 'Mark Completed'),
+      ],
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      categoryIdentifier:
+          'habit_actions', // Needs setup in AppDelegate for iOS actions usually
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // Use hashcode of ID for unique notification ID
+    final notificationId = habit.id.hashCode;
+
+    try {
+      await _notifications.zonedSchedule(
+        notificationId,
+        'Time for ${habit.title}',
+        habit.description.isNotEmpty
+            ? habit.description
+            : 'Don\'t forget your habit!',
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
+        payload: 'habit_${habit.id}',
+      );
+    } catch (e) {
+      await _notifications.zonedSchedule(
+        notificationId,
+        'Time for ${habit.title}',
+        habit.description.isNotEmpty
+            ? habit.description
+            : 'Don\'t forget your habit!',
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'habit_${habit.id}',
+      );
+    }
+  }
+
+  // Cancel habit reminder
+  Future<void> cancelHabitReminder(String habitId) async {
+    await _notifications.cancel(habitId.hashCode);
+  }
+
   static Future<void> savePreferences({
     bool? periodRemindersEnabled,
     bool? ovulationRemindersEnabled,
@@ -429,6 +538,130 @@ class NotificationService {
 
     if (reminderDaysBefore != null) {
       await prefs.setInt('reminder_days_before', reminderDaysBefore);
+    }
+  }
+
+  // Handle background actions
+  Future<void> handleBackgroundAction(NotificationResponse response) async {
+    try {
+      debugPrint(
+          '[Notification] Background Action received: ${response.actionId}');
+
+      // Ensure timezones are initialized for this isolate
+      tz.initializeTimeZones();
+
+      // 1. IMPROVE RESPONSIVENESS: Handle notification dismissal/reschedule IMMEDIATELY
+      if (response.id != null) {
+        if (response.actionId == actionComplete) {
+          debugPrint('[Notification] Immediate cancel for Completion');
+          await _notifications.cancel(response.id!);
+        } else if (response.actionId == actionSnooze) {
+          debugPrint('[Notification] Immediate reschedule for Snooze');
+
+          final now = tz.TZDateTime.now(tz.local);
+          final scheduledDate = now.add(const Duration(minutes: 10));
+
+          const androidDetails = AndroidNotificationDetails(
+            'habit_reminders',
+            'Habit Reminders',
+            channelDescription: 'Reminders for your habits',
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/launcher_icon',
+            actions: [
+              AndroidNotificationAction(actionSnooze, 'Snooze 10m'),
+              AndroidNotificationAction(actionComplete, 'Mark Completed'),
+            ],
+          );
+          const iosDetails = DarwinNotificationDetails();
+          const details =
+              NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+          await _notifications.zonedSchedule(
+            response.id!,
+            'Habit Reminder (Snoozed)',
+            'Time to complete your habit!',
+            scheduledDate,
+            details,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+            payload: response.payload,
+          );
+        }
+      }
+
+      // 2. DATA WORK: Perform the actual logic in background
+      if (response.payload == null) return;
+
+      // Parse payload "habit_ID"
+      final payloadParts = response.payload!.split('_');
+      if (payloadParts.length < 2 || payloadParts[0] != 'habit') return;
+      final habitId = payloadParts.sublist(1).join('_');
+
+      if (response.actionId == actionComplete) {
+        debugPrint('[Notification] Beginning Data Update isolate tasks');
+
+        // Ensure plugin is initialized for this isolate if we need more plugin calls
+        const androidSettings =
+            AndroidInitializationSettings('@mipmap/launcher_icon');
+        const iosSettings = DarwinInitializationSettings();
+        const initSettings =
+            InitializationSettings(android: androidSettings, iOS: iosSettings);
+        await _notifications.initialize(initSettings);
+
+        await _initializeMinimalDataLayer();
+        await _markHabitComplete(habitId);
+      }
+    } catch (e, stack) {
+      debugPrint('[Notification] ERROR in background action: $e\n$stack');
+    }
+  }
+
+  Future<void> _initializeMinimalDataLayer() async {
+    try {
+      debugPrint('[Notification] Initializing Minimal Data Layer');
+      WidgetsFlutterBinding.ensureInitialized();
+
+      // Register adapters manually if needed for background isolate
+      if (!Hive.isAdapterRegistered(5)) {
+        Hive.registerAdapter(HabitAdapter());
+      }
+
+      await DatabaseService.initialize();
+      debugPrint('[Notification] Data Layer Ready');
+    } catch (e) {
+      debugPrint('[Notification] Data Layer Initialization FAILED: $e');
+    }
+  }
+
+  Future<void> _markHabitComplete(String habitId) async {
+    try {
+      final cipher = await DatabaseService.getEncryptionCipher();
+      final box = await Hive.openBox<Habit>('habits', encryptionCipher: cipher);
+
+      final habit = box.get(habitId);
+      if (habit != null) {
+        final now = DateTime.now();
+        final normalizedDate = DateTime(now.year, now.month, now.day);
+
+        // Check if already completed
+        final isCompleted = habit.completedDates.any((d) =>
+            d.year == normalizedDate.year &&
+            d.month == normalizedDate.month &&
+            d.day == normalizedDate.day);
+
+        if (!isCompleted) {
+          List<DateTime> newCompletedDates = List.from(habit.completedDates);
+          newCompletedDates.add(normalizedDate);
+
+          final updatedHabit =
+              habit.copyWith(completedDates: newCompletedDates);
+          await box.put(habitId, updatedHabit);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error marking complete in background: $e');
     }
   }
 }

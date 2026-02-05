@@ -89,12 +89,11 @@ class _MainScreenState extends State<MainScreen> {
         items: const [
           BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline), label: 'Notes'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.fastfood_outlined), label: 'Meals'),
+          BottomNavigationBarItem(icon: Icon(Icons.alarm), label: 'Habits'),
           BottomNavigationBarItem(
               icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
           BottomNavigationBarItem(
-              icon: Icon(Icons.bedtime_outlined), label: 'Sleep'),
+              icon: Icon(Icons.bar_chart), label: 'Analytics'),
           BottomNavigationBarItem(
               icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
