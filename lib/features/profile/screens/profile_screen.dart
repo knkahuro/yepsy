@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import '../../../../theme/typography.dart';
@@ -15,8 +16,8 @@ import '../widgets/option_tile.dart';
 import '../../../core/services/biometric_service.dart';
 import '../../../core/services/encryption_service.dart';
 import '../../../core/services/streak_service.dart';
-import '../../../core/services/onboarding_service.dart';
-import '../../calendar/screens/calendar_screen.dart';
+import '../../../core/database/database_service.dart';
+
 import 'version_features_page.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -45,7 +46,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _biometricType = 'Biometric';
 
   final EncryptionService _encryptionService = EncryptionService();
-  final OnboardingService _onboardingService = OnboardingService();
 
   @override
   void initState() {
@@ -563,15 +563,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               subtitle: 'Restore from backup file',
               onTap: _importData,
             ),
-
-            const SizedBox(height: 32),
-            const SectionTitle(title: 'Help & Support'),
             const SizedBox(height: 12),
             OptionTile(
-              icon: Icons.school_outlined,
-              title: 'Tutorials',
-              subtitle: 'Replay the app tutorial',
-              onTap: _showTutorial,
+              icon: Icons.delete_forever_outlined,
+              title: 'Delete All Data',
+              subtitle: 'Permanently erase all app data',
+              iconColor: Colors.red,
+              textColor: Colors.red,
+              onTap: _deleteAllData,
             ),
 
             const SizedBox(height: 32),
@@ -787,49 +786,152 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _showTutorial() async {
+  Future<void> _deleteAllData() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Replay Tutorial'),
+        title: const Text('Delete All Data?'),
         content: const Text(
-          'This will reset the tutorial and navigate to the Calendar screen to show it. Continue?',
+          'This will permanently delete all your entries, settings, and preferences. This action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Continue'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete Everything'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
-      debugPrint('🔄 ProfileScreen: Resetting tutorial...');
-      await _onboardingService.resetTutorial();
-      debugPrint('🔄 ProfileScreen: Tutorial reset complete');
-      if (!mounted) return;
-
-      debugPrint('🔄 ProfileScreen: Navigating to calendar...');
-      // Navigate to calendar to trigger tutorial
-      context.go('/calendar');
-
-      // Wait a moment for navigation to complete, then force tutorial check
-      await Future.delayed(const Duration(milliseconds: 500));
-      debugPrint('🔄 ProfileScreen: Calling forceTutorialCheck...');
-      CalendarScreen.forceTutorialCheck();
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tutorial will show in a moment...'),
-          duration: Duration(seconds: 2),
+    if (confirmed == true && mounted) {
+      // Double check
+      final doubleConfirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Are you absolutely sure?'),
+          content: const Text(
+            'All data will be lost forever. The app will restart as if new.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Yes, Delete All'),
+            ),
+          ],
         ),
       );
+
+      if (doubleConfirmed == true && mounted) {
+        // Navigate to a clean slate immediately to unmount all Hive boxes users
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const _ResettingAppScreen(),
+          ),
+          (route) => false, // Remove all previous routes
+        );
+      }
     }
+  }
+}
+
+class _ResettingAppScreen extends StatefulWidget {
+  const _ResettingAppScreen();
+
+  @override
+  State<_ResettingAppScreen> createState() => _ResettingAppScreenState();
+}
+
+class _ResettingAppScreenState extends State<_ResettingAppScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _performReset();
+  }
+
+  Future<void> _performReset() async {
+    // Give time for the UI to settle and previous routes to dispose
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    try {
+      // 1. Clear Hive Database completely
+      await DatabaseService.clearAllData();
+
+      // 2. Reset Encryption Keys in Memory
+      final encryptionService = EncryptionService();
+      await encryptionService.resetEncryption();
+
+      // 3. DO NOT Reset Onboarding
+      // We want the user to stay "onboarded" so they don't get sample data again.
+      // The database is already empty, so they will start fresh on the Home screen.
+
+      if (mounted) {
+        // Show restart dialog
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Reset Complete'),
+            content: const Text(
+              'All data has been erased.\n\nThe app will now close. Please restart it to begin fresh setup.',
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  SystemNavigator.pop();
+                },
+                child: const Text('Close App'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting data: $e')),
+        );
+        // Navigate back to onboarding or some safe state if possible,
+        // but since we might have partially deleted things, it's safer to just tell them to restart.
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 24),
+            Text(
+              'Resetting App...',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Please wait while we clear your data',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

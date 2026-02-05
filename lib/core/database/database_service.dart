@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Service for managing database migrations and optimizations
 class DatabaseService {
@@ -131,17 +132,64 @@ class DatabaseService {
     return stats;
   }
 
-  /// Clear all data (for testing or reset)
+  /// Clear all data (Factory Reset)
   static Future<void> clearAllData() async {
-    final boxNames = ['calendar_events', 'sleep_logs', 'notes', 'meals'];
+    final boxNames = [
+      'calendar_events',
+      'sleep_logs',
+      'notes',
+      'meals',
+      'settings',
+      'cycle_profile',
+      'symptom_logs'
+    ];
 
     for (final boxName in boxNames) {
-      if (Hive.isBoxOpen(boxName)) {
-        final box = Hive.box(boxName);
-        await box.clear();
-        debugPrint('Cleared $boxName');
+      try {
+        if (Hive.isBoxOpen(boxName)) {
+          await Hive.box(boxName).close();
+        }
+        await Hive.deleteBoxFromDisk(boxName);
+        debugPrint('Deleted box from disk: $boxName');
+      } catch (e) {
+        debugPrint('Error deleting $boxName via Hive: $e');
       }
     }
+
+    // Manual cleanup of any remnants
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final files = appDir.listSync();
+      for (var file in files) {
+        if (file.path.endsWith('.hive') || file.path.endsWith('.lock')) {
+          try {
+            file.deleteSync();
+            debugPrint('Force deleted file: ${file.path}');
+          } catch (e) {
+            debugPrint('Failed to force delete ${file.path}: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error during manual cleanup: $e');
+    }
+
+    // Also clear secure storage (Encryption keys)
+    await _secureStorage.deleteAll();
+    debugPrint('Cleared Secure Storage');
+  }
+
+  /// Re-initialize database after a factory reset
+  /// This ensures the app can continue running without restarting
+  static Future<void> reinitializeAfterReset() async {
+    // We don't call Hive.initFlutter() again as it throws if called twice
+    // But we need to ensure boxes can be opened again
+
+    // Open settings box to reset version
+    final settingsBox = await Hive.openBox('settings');
+    await settingsBox.put(_versionKey, 0); // Reset version
+
+    debugPrint('Database re-initialized after reset');
   }
 
   /// Backup database to a specific path

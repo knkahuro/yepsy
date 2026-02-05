@@ -8,12 +8,17 @@ class OptionTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
 
+  final Color? iconColor;
+  final Color? textColor;
+
   const OptionTile({
     super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.iconColor,
+    this.textColor,
   });
 
   @override
@@ -33,15 +38,13 @@ class OptionTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
+                color: (iconColor ?? Theme.of(context).colorScheme.primary)
                     .withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: Theme.of(context).colorScheme.primary,
+                color: iconColor ?? Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
             ),
@@ -54,7 +57,7 @@ class OptionTile extends StatelessWidget {
                     title,
                     style: AppTypography.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: textColor ?? Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 2),

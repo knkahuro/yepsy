@@ -28,11 +28,18 @@ class SampleDataService {
 
   /// Initialize all required features and services
   Future<void> _initServices() async {
-    await _calendarService.init();
-    await _sleepService.init();
-
-    await _notesService.init();
-    await _mealsService.init();
+    // If we just wiped data, we need to ensure the services re-open their boxes
+    // We call init() on each service, which typically checks Hive.isBoxOpen
+    // But since we did a hard delete, we might need to force it or handle errors
+    try {
+      await _calendarService.init();
+      await _sleepService.init();
+      await _notesService.init();
+      await _mealsService.init();
+    } catch (e) {
+      // If initialization fails, rethrow so we can catch it in UI
+      throw Exception('Failed to initialize services for sample data: $e');
+    }
   }
 
   /// Generates and seeds a comprehensive set of sample data.

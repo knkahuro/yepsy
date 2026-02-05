@@ -203,9 +203,7 @@ class CalendarDataService {
     if (profile != null) return profile;
 
     // Create default profile
-    final defaultProfile = UserCycleProfile(
-      lastPeriodStart: DateTime.now().subtract(const Duration(days: 10)),
-    );
+    final defaultProfile = UserCycleProfile();
     await saveCycleProfile(defaultProfile);
     return defaultProfile;
   }

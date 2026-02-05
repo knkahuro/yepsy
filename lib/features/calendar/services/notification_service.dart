@@ -58,8 +58,11 @@ class NotificationService {
     if (androidImplementation != null) {
       final bool? granted =
           await androidImplementation.requestNotificationsPermission();
+
+      // Try to request exact alarm permission if available (Android 12+)
+      await androidImplementation.requestExactAlarmsPermission();
+
       if (granted != null) {
-        // If Android 13+, return explicit result
         return granted;
       }
     }
@@ -133,17 +136,32 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _notifications.zonedSchedule(
-      0, // Notification ID
-      'Period Reminder',
-      'Your period is expected in $daysBeforePeriod ${daysBeforePeriod == 1 ? 'day' : 'days'}',
-      scheduledDate,
-      details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: 'period_reminder',
-    );
+    try {
+      await _notifications.zonedSchedule(
+        0, // Notification ID
+        'Period Reminder',
+        'Your period is expected in $daysBeforePeriod ${daysBeforePeriod == 1 ? 'day' : 'days'}',
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'period_reminder',
+      );
+    } catch (e) {
+      // Fallback to inexact if permission denied
+      await _notifications.zonedSchedule(
+        0,
+        'Period Reminder',
+        'Your period is expected in $daysBeforePeriod ${daysBeforePeriod == 1 ? 'day' : 'days'}',
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'period_reminder',
+      );
+    }
   }
 
   // Schedule ovulation reminder
@@ -193,17 +211,31 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _notifications.zonedSchedule(
-      1, // Notification ID
-      'Fertile Window',
-      'You are entering your fertile window tomorrow',
-      scheduledDate,
-      details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      payload: 'ovulation_reminder',
-    );
+    try {
+      await _notifications.zonedSchedule(
+        1, // Notification ID
+        'Fertile Window',
+        'You are entering your fertile window tomorrow',
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'ovulation_reminder',
+      );
+    } catch (e) {
+      await _notifications.zonedSchedule(
+        1,
+        'Fertile Window',
+        'You are entering your fertile window tomorrow',
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'ovulation_reminder',
+      );
+    }
   }
 
   // Schedule daily log reminder
@@ -247,20 +279,37 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _notifications.zonedSchedule(
-      2, // Notification ID
-      streak > 0 ? 'Keep your streak alive!' : 'Daily Check-in',
-      streak > 0
-          ? 'You have a $streak day streak! Log your logs today to keep it going.'
-          : 'Take a moment to log your mood, symptoms or meals today.',
-      finalScheduledDate,
-      details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
-      payload: 'daily_log_reminder',
-    );
+    try {
+      await _notifications.zonedSchedule(
+        2, // Notification ID
+        streak > 0 ? 'Keep your streak alive!' : 'Daily Check-in',
+        streak > 0
+            ? 'You have a $streak day streak! Log your logs today to keep it going.'
+            : 'Take a moment to log your mood, symptoms or meals today.',
+        finalScheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
+        payload: 'daily_log_reminder',
+      );
+    } catch (e) {
+      await _notifications.zonedSchedule(
+        2,
+        streak > 0 ? 'Keep your streak alive!' : 'Daily Check-in',
+        streak > 0
+            ? 'You have a $streak day streak! Log your logs today to keep it going.'
+            : 'Take a moment to log your mood, symptoms or meals today.',
+        finalScheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: 'daily_log_reminder',
+      );
+    }
   }
 
   // Check and notify streak milestone

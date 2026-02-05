@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
-import '../../../core/services/onboarding_service.dart';
 
 import '../../../../theme/typography.dart';
 import '../../../shared/widgets/message_bubble.dart';
@@ -27,12 +25,6 @@ class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
   // Public static method to force tutorial check
-  static void forceTutorialCheck() {
-    final state = calendarScreenKey.currentState;
-    if (state is _CalendarScreenState) {
-      state.forceTutorialCheck();
-    }
-  }
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -53,19 +45,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   UserCycleProfile _cycleProfile = UserCycleProfile();
   bool _isLoading = true;
 
-  // Tutorial Keys
-  final GlobalKey _calendarKey = GlobalKey();
-  final GlobalKey _legendKey = GlobalKey();
-  final OnboardingService _onboardingService = OnboardingService();
-  late TutorialCoachMark tutorialCoachMark;
-
   bool _showPeriods = false;
   bool _showSymptoms = false;
   bool _showFertileWindow = false;
   bool _showOvulation = false;
-
-  // Track last tutorial check to avoid redundant checks
-  DateTime? _lastTutorialCheck;
 
   bool get _allTogglesOff =>
       !_showPeriods && !_showSymptoms && !_showFertileWindow && !_showOvulation;
@@ -78,127 +61,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   @override
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Check tutorial every time the widget becomes visible, but throttle to once per 2 seconds
-    final now = DateTime.now();
-    if (_lastTutorialCheck == null ||
-        now.difference(_lastTutorialCheck!).inSeconds > 2) {
-      _lastTutorialCheck = now;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _checkTutorial();
-      });
-    }
-  }
-
-  Future<void> _checkTutorial() async {
-    debugPrint('🎓 CalendarScreen: Checking tutorial status...');
-    final isCompleted = await _onboardingService.isTutorialCompleted();
-    debugPrint('🎓 CalendarScreen: Tutorial completed = $isCompleted');
-    if (!isCompleted) {
-      debugPrint('🎓 CalendarScreen: Showing tutorial...');
-      _showTutorial();
-    } else {
-      debugPrint('🎓 CalendarScreen: Tutorial already completed, skipping');
-    }
-  }
-
-  void _showTutorial() {
-    debugPrint('🎓 CalendarScreen: Creating tutorial coach mark...');
-    tutorialCoachMark = TutorialCoachMark(
-      targets: _createTargets(),
-      colorShadow: Theme.of(context).colorScheme.primary,
-      textSkip: "SKIP",
-      paddingFocus: 10,
-      opacityShadow: 0.8,
-      onFinish: () {
-        debugPrint('🎓 CalendarScreen: Tutorial finished');
-        _onboardingService.completeTutorial();
-      },
-      onSkip: () {
-        debugPrint('🎓 CalendarScreen: Tutorial skipped');
-        _onboardingService.completeTutorial();
-        return true;
-      },
-    );
-    debugPrint('🎓 CalendarScreen: Showing tutorial coach mark...');
-    tutorialCoachMark.show(context: context);
-  }
-
-  // Public method to force tutorial check (can be called from anywhere)
-  void forceTutorialCheck() {
-    debugPrint('🎓 CalendarScreen: Force tutorial check requested');
-    _checkTutorial();
-  }
-
-  List<TargetFocus> _createTargets() {
-    List<TargetFocus> targets = [];
-
-    targets.add(
-      TargetFocus(
-        identify: "calendar",
-        keyTarget: _calendarKey,
-        contents: [
-          TargetContent(
-            align: ContentAlign.bottom,
-            builder: (context, controller) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Your Cycle View",
-                    style: AppTypography.displayTextTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "The calendar shows your tracked data. Tap on any day to see details or add new entries.",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-
-    targets.add(
-      TargetFocus(
-        identify: "legend",
-        keyTarget: _legendKey,
-        contents: [
-          TargetContent(
-            align: ContentAlign.top,
-            builder: (context, controller) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Filters & Legend",
-                    style: AppTypography.displayTextTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Toggle filters to show or hide symbols on the calendar. This helps you focus on specific patterns.",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-
-    return targets;
   }
 
   // Load filter states from shared preferences
@@ -402,7 +267,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const SizedBox(height: 20),
               // Calendar
               Container(
-                key: _calendarKey,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -506,7 +370,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const SizedBox(height: 16),
               // Interactive Legend
               Wrap(
-                key: _legendKey,
                 alignment: WrapAlignment.center,
                 spacing: 12,
                 runSpacing: 8,

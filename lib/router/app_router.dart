@@ -68,8 +68,7 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
                 path: '/calendar',
-                builder: (context, state) =>
-                    CalendarScreen(key: calendarScreenKey),
+                builder: (context, state) => const CalendarScreen(),
                 routes: [
                   GoRoute(
                     path: 'details',
