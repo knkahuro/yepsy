@@ -1,6 +1,6 @@
 # Yepsy - Your Personal Wellness & Cycle Tracker
 
-Yepsy is a premium, privacy-focused wellness application designed to help you track your cycle, symptoms, moods, meals, and sleep. With a sleek dark-mode aesthetic and secure, encrypted storage, Yepsy provides deep insights into your physical and mental well-being.
+Yepsy is a premium, privacy-focused wellness application designed to help you track your cycle, symptoms, moods, habits, and sleep. With a sleek dark-mode aesthetic and secure, encrypted storage, Yepsy provides deep insights into your physical and mental well-being.
 
 ## Key Features
 
