@@ -33,9 +33,9 @@ class _MainScreenState extends State<MainScreen> {
         _currentStreak = streak;
       });
 
-      // Check for milestones and schedule reminders
+      // Check for milestones and schedule tasks
       await _notificationService.checkAndNotifyStreakMilestone();
-      await _notificationService.scheduleDailyLogReminder();
+      await _notificationService.scheduleDailyLogTask();
     }
   }
 
@@ -89,7 +89,7 @@ class _MainScreenState extends State<MainScreen> {
         items: const [
           BottomNavigationBarItem(
               icon: Icon(Icons.chat_bubble_outline), label: 'Notes'),
-          BottomNavigationBarItem(icon: Icon(Icons.alarm), label: 'Habits'),
+          BottomNavigationBarItem(icon: Icon(Icons.task_alt), label: 'Tasks'),
           BottomNavigationBarItem(
               icon: Icon(Icons.calendar_month_outlined), label: 'Calendar'),
           BottomNavigationBarItem(

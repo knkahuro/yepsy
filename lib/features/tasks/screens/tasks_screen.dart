@@ -2,28 +2,29 @@ import 'package:flutter/material.dart';
 
 import '../../../../theme/typography.dart';
 import '../../../shared/widgets/message_bubble.dart';
-import '../models/habit.dart';
-import '../widgets/habit_tile.dart';
+import '../models/task.dart';
+import '../widgets/task_tile.dart';
 
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
-import '../services/habit_service.dart';
+import '../services/task_service.dart';
+import '../../../core/services/tutorial_service.dart';
 
-/// Main screen for tracking and managing habits.
-class HabitsScreen extends StatefulWidget {
-  const HabitsScreen({super.key});
+/// Main screen for tracking and managing tasks.
+class TasksScreen extends StatefulWidget {
+  const TasksScreen({super.key});
 
   @override
-  State<HabitsScreen> createState() => _HabitsScreenState();
+  State<TasksScreen> createState() => _TasksScreenState();
 }
 
-class _HabitsScreenState extends State<HabitsScreen>
+class _TasksScreenState extends State<TasksScreen>
     with WidgetsBindingObserver {
-  final HabitService _dataService = HabitService();
-  final List<Habit> _allHabits = [];
+  final TaskService _dataService = TaskService();
+  final List<ActivityTask> _allTasks = [];
 
-  List<Habit> _filteredHabits = [];
-  List<Habit> _displayedHabits = []; // Paginated subset
+  List<ActivityTask> _filteredTasks = [];
+  List<ActivityTask> _displayedTasks = []; // Paginated subset
   String _selectedCategory = 'All';
   String _searchQuery = '';
   final List<String> _categories = [
@@ -41,12 +42,17 @@ class _HabitsScreenState extends State<HabitsScreen>
   final ScrollController _scrollController = ScrollController();
   bool _hasMoreData = true;
 
+  // Tutorial Keys
+  final GlobalKey _addButtonKey = GlobalKey();
+  final GlobalKey _categoryBarKey = GlobalKey();
+  final TutorialService _tutorialService = TutorialService();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
-    _loadHabits();
+    _loadTasks();
   }
 
   @override
@@ -59,7 +65,7 @@ class _HabitsScreenState extends State<HabitsScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _loadHabits();
+      _loadTasks();
     }
   }
 
@@ -67,36 +73,37 @@ class _HabitsScreenState extends State<HabitsScreen>
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoadingMore && _hasMoreData) {
-        _loadMoreHabits();
+        _loadMoreTasks();
       }
     }
   }
 
-  Future<void> _loadHabits() async {
+  Future<void> _loadTasks() async {
     try {
       await _dataService.init();
-      final habits = await _dataService.getAllHabits();
+      final tasks = await _dataService.getAllTasks();
 
       // Simulate network delay to show skeleton
       await Future.delayed(const Duration(milliseconds: 1000));
 
       if (mounted) {
         setState(() {
-          _allHabits.clear();
-          _allHabits.addAll(habits);
-          _filterHabits();
+          _allTasks.clear();
+          _allTasks.addAll(tasks);
+          _filterTasks();
           _loadPage();
           _isLoading = false;
         });
+        _checkTutorial();
       }
     } catch (e) {
-      debugPrint('Error loading habits: $e');
+      debugPrint('Error loading tasks: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load habits: $e')),
+          SnackBar(content: Text('Failed to load tasks: $e')),
         );
       }
     }
@@ -106,23 +113,23 @@ class _HabitsScreenState extends State<HabitsScreen>
     final startIndex = _currentPage * _pageSize;
     final endIndex = startIndex + _pageSize;
 
-    if (startIndex >= _filteredHabits.length) {
+    if (startIndex >= _filteredTasks.length) {
       setState(() => _hasMoreData = false);
       return;
     }
 
     setState(() {
-      _displayedHabits.addAll(
-        _filteredHabits.sublist(
+      _displayedTasks.addAll(
+        _filteredTasks.sublist(
           startIndex,
-          endIndex > _filteredHabits.length ? _filteredHabits.length : endIndex,
+          endIndex > _filteredTasks.length ? _filteredTasks.length : endIndex,
         ),
       );
-      _hasMoreData = endIndex < _filteredHabits.length;
+      _hasMoreData = endIndex < _filteredTasks.length;
     });
   }
 
-  Future<void> _loadMoreHabits() async {
+  Future<void> _loadMoreTasks() async {
     if (_isLoadingMore) return;
 
     setState(() => _isLoadingMore = true);
@@ -134,10 +141,23 @@ class _HabitsScreenState extends State<HabitsScreen>
     if (mounted) setState(() => _isLoadingMore = false);
   }
 
-  void _filterHabits() {
+  Future<void> _checkTutorial() async {
+    if (await _tutorialService.shouldShowTasksTutorial()) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        _tutorialService.showTasksTutorial(
+          context: context,
+          addKey: _addButtonKey,
+          categoryKey: _categoryBarKey,
+        );
+      });
+    }
+  }
+
+  void _filterTasks() {
     final now = DateTime.now();
     setState(() {
-      _filteredHabits = _allHabits.where((m) {
+      _filteredTasks = _allTasks.where((m) {
         final matchesCategory =
             _selectedCategory == 'All' || m.category == _selectedCategory;
         final matchesSearch = m.title
@@ -149,7 +169,7 @@ class _HabitsScreenState extends State<HabitsScreen>
       }).toList();
 
       // Sort: Pending first, then Completed
-      _filteredHabits.sort((a, b) {
+      _filteredTasks.sort((a, b) {
         final aCompleted = _dataService.isCompletedOnDate(a, now);
         final bCompleted = _dataService.isCompletedOnDate(b, now);
         if (aCompleted == bCompleted) {
@@ -160,7 +180,7 @@ class _HabitsScreenState extends State<HabitsScreen>
 
       // Reset pagination
       _currentPage = 0;
-      _displayedHabits = [];
+      _displayedTasks = [];
       _hasMoreData = true;
     });
   }
@@ -173,7 +193,7 @@ class _HabitsScreenState extends State<HabitsScreen>
         backgroundColor: Theme.of(context).colorScheme.primary,
         elevation: 0,
         title: Text(
-          'Habits',
+          'Tasks',
           style: AppTypography.displayTextTheme.titleLarge?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -181,7 +201,8 @@ class _HabitsScreenState extends State<HabitsScreen>
         ),
         actions: [
           IconButton(
-            onPressed: () => _showHabitForm(context),
+            key: _addButtonKey,
+            onPressed: () => _showTaskForm(context),
             icon: const Icon(Icons.add_box_outlined, color: Colors.white),
           ),
         ],
@@ -247,7 +268,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Image.asset(
-                            'assets/images/habit.png',
+                            'assets/images/task.png',
                             width: 120,
                             height: 120,
                             fit: BoxFit.contain,
@@ -255,7 +276,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                           const SizedBox(width: 16),
                           const Expanded(
                             child: MessageBubble(
-                              message: 'New year, new me!',
+                              message: 'Let\'s get things done!',
                             ),
                           ),
                         ],
@@ -265,11 +286,11 @@ class _HabitsScreenState extends State<HabitsScreen>
                       TextField(
                         onChanged: (value) {
                           _searchQuery = value;
-                          _filterHabits();
+                          _filterTasks();
                           _loadPage(); // Load first page after filter
                         },
                         decoration: InputDecoration(
-                          hintText: 'Search habits...',
+                          hintText: 'Search tasks...',
                           prefixIcon:
                               const Icon(Icons.search, color: Colors.grey),
                           filled: true,
@@ -285,6 +306,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                       const SizedBox(height: 12),
                       // Category Filter
                       SingleChildScrollView(
+                        key: _categoryBarKey,
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: _categories.map((category) {
@@ -297,7 +319,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                                 onSelected: (bool selected) {
                                   setState(() {
                                     _selectedCategory = category;
-                                    _filterHabits();
+                                    _filterTasks();
                                     _loadPage(); // Load first page after filter
                                   });
                                 },
@@ -333,19 +355,19 @@ class _HabitsScreenState extends State<HabitsScreen>
                   ),
                 ),
                 Expanded(
-                  child: _displayedHabits.isEmpty
+                  child: _displayedTasks.isEmpty
                       ? const EmptyStateWidget(
-                          message: 'No habits yet. Start a new one!',
+                          message: 'No tasks yet. Start a new one!',
                           icon: Icons.check_circle_outline,
                         )
                       : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          itemCount: _displayedHabits.length +
+                          itemCount: _displayedTasks.length +
                               (_isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
                             // Show loading indicator at the end
-                            if (index == _displayedHabits.length) {
+                            if (index == _displayedTasks.length) {
                               return const Padding(
                                 padding: EdgeInsets.all(16),
                                 child: Center(
@@ -354,9 +376,9 @@ class _HabitsScreenState extends State<HabitsScreen>
                               );
                             }
 
-                            final habit = _displayedHabits[index];
+                            final task = _displayedTasks[index];
                             return Dismissible(
-                              key: ValueKey(habit.id),
+                              key: ValueKey(task.id),
                               background: Container(
                                 alignment: Alignment.centerRight,
                                 padding: const EdgeInsets.only(right: 20),
@@ -373,12 +395,12 @@ class _HabitsScreenState extends State<HabitsScreen>
                                 ),
                               ),
                               onDismissed: (direction) async {
-                                final deletedHabit = habit;
+                                final deletedTask = task;
 
                                 // Optimistically remove from UI
                                 setState(() {
-                                  _allHabits.remove(habit);
-                                  _filterHabits();
+                                  _allTasks.remove(task);
+                                  _filterTasks();
                                   _loadPage();
                                 });
 
@@ -387,19 +409,19 @@ class _HabitsScreenState extends State<HabitsScreen>
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     duration: const Duration(seconds: 4),
-                                    content: const Text('Habit deleted'),
+                                    content: const Text('ActivityTask deleted'),
                                     action: SnackBarAction(
                                       label: 'Undo',
                                       onPressed: () async {
                                         // Restore to UI
                                         setState(() {
-                                          _allHabits.add(deletedHabit);
-                                          _filterHabits();
+                                          _allTasks.add(deletedTask);
+                                          _filterTasks();
                                           _loadPage();
                                         });
                                         // Re-save to DB
                                         await _dataService
-                                            .saveHabit(deletedHabit);
+                                            .saveTask(deletedTask);
                                       },
                                     ),
                                   ),
@@ -407,34 +429,34 @@ class _HabitsScreenState extends State<HabitsScreen>
 
                                 // Persist deletion in background
                                 try {
-                                  await _dataService.deleteHabit(habit.id);
+                                  await _dataService.deleteTask(task.id);
                                 } catch (e) {
-                                  debugPrint('Error deleting habit: $e');
+                                  debugPrint('Error deleting task: $e');
                                   // Optionally show error snackbar or restore item
                                 }
                               },
-                              child: HabitTile(
-                                habit: habit,
+                              child: TaskTile(
+                                task: task,
                                 isCompleted: _dataService.isCompletedOnDate(
-                                    habit, DateTime.now()),
+                                    task, DateTime.now()),
                                 onToggleCompletion: (val) async {
-                                  final updatedHabit =
+                                  final updatedTask =
                                       await _dataService.toggleCompletion(
-                                          habit.id, DateTime.now());
-                                  if (updatedHabit != null) {
+                                          task.id, DateTime.now());
+                                  if (updatedTask != null) {
                                     setState(() {
-                                      final index = _allHabits
-                                          .indexWhere((h) => h.id == habit.id);
+                                      final index = _allTasks
+                                          .indexWhere((h) => h.id == task.id);
                                       if (index != -1) {
-                                        _allHabits[index] = updatedHabit;
+                                        _allTasks[index] = updatedTask;
                                       }
-                                      _filterHabits();
+                                      _filterTasks();
                                       _loadPage();
                                     });
                                   }
                                 },
                                 onEdit: () =>
-                                    _showHabitForm(context, habitToEdit: habit),
+                                    _showTaskForm(context, taskToEdit: task),
                               ),
                             );
                           },
@@ -490,16 +512,16 @@ class _HabitsScreenState extends State<HabitsScreen>
     );
   }
 
-  void _showHabitForm(BuildContext context, {Habit? habitToEdit}) {
+  void _showTaskForm(BuildContext context, {ActivityTask? taskToEdit}) {
     final titleController =
-        TextEditingController(text: habitToEdit?.title ?? '');
+        TextEditingController(text: taskToEdit?.title ?? '');
     final descController =
-        TextEditingController(text: habitToEdit?.description ?? '');
+        TextEditingController(text: taskToEdit?.description ?? '');
     String selectedCategory =
-        habitToEdit?.category ?? _categories.firstWhere((c) => c != 'All');
+        taskToEdit?.category ?? _categories.firstWhere((c) => c != 'All');
 
-    DateTime? reminderTime = habitToEdit?.reminderTime;
-    List<int> frequency = habitToEdit?.frequency ?? [1, 2, 3, 4, 5, 6, 7];
+    DateTime? taskTime = taskToEdit?.taskTime;
+    List<int> frequency = taskToEdit?.frequency ?? [1, 2, 3, 4, 5, 6, 7];
 
     showModalBottomSheet(
       context: context,
@@ -523,7 +545,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      habitToEdit == null ? 'Log Habit' : 'Edit Habit',
+                      taskToEdit == null ? 'Log ActivityTask' : 'Edit ActivityTask',
                       style: AppTypography.displayTextTheme.titleMedium,
                     ),
                     const SizedBox(height: 16),
@@ -571,20 +593,20 @@ class _HabitsScreenState extends State<HabitsScreen>
                       setModalState(() => frequency = newFreq);
                     }),
                     const SizedBox(height: 12),
-                    // Reminder Picker
+                    // ActivityTask Picker
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(Icons.notifications,
                           color: Theme.of(context).colorScheme.primary),
-                      title: Text(reminderTime == null
-                          ? 'Set Reminder'
-                          : 'Reminder: ${reminderTime!.hour.toString().padLeft(2, '0')}:${reminderTime!.minute.toString().padLeft(2, '0')}'),
-                      trailing: reminderTime != null
+                      title: Text(taskTime == null
+                          ? 'Set ActivityTask'
+                          : 'ActivityTask: ${taskTime!.hour.toString().padLeft(2, '0')}:${taskTime!.minute.toString().padLeft(2, '0')}'),
+                      trailing: taskTime != null
                           ? IconButton(
                               icon: const Icon(Icons.clear),
                               onPressed: () {
                                 setModalState(() {
-                                  reminderTime = null;
+                                  taskTime = null;
                                 });
                               },
                             )
@@ -597,7 +619,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                         if (time != null) {
                           setModalState(() {
                             final now = DateTime.now();
-                            reminderTime = DateTime(
+                            taskTime = DateTime(
                               now.year,
                               now.month,
                               now.day,
@@ -614,45 +636,45 @@ class _HabitsScreenState extends State<HabitsScreen>
                         debugPrint('Save button pressed');
                         if (titleController.text.isNotEmpty) {
                           debugPrint('Title is valid: ${titleController.text}');
-                          Habit savedHabit;
-                          if (habitToEdit == null) {
-                            debugPrint('Creating new habit');
-                            savedHabit = Habit(
+                          ActivityTask savedTask;
+                          if (taskToEdit == null) {
+                            debugPrint('Creating new task');
+                            savedTask = ActivityTask(
                               title: titleController.text,
                               description: descController.text,
                               category: selectedCategory,
-                              reminderTime: reminderTime,
+                              taskTime: taskTime,
                               frequency: frequency,
                             );
                             setState(() {
-                              _allHabits.add(savedHabit);
+                              _allTasks.add(savedTask);
                             });
                           } else {
                             debugPrint(
-                                'Updating existing habit: ${habitToEdit.id}');
-                            savedHabit = habitToEdit.copyWith(
+                                'Updating existing task: ${taskToEdit.id}');
+                            savedTask = taskToEdit.copyWith(
                               title: titleController.text,
                               description: descController.text,
                               category: selectedCategory,
-                              reminderTime: reminderTime,
+                              taskTime: taskTime,
                               frequency: frequency,
                             );
                             setState(() {
-                              final index = _allHabits.indexOf(habitToEdit);
+                              final index = _allTasks.indexOf(taskToEdit);
                               if (index != -1) {
-                                _allHabits[index] = savedHabit;
+                                _allTasks[index] = savedTask;
                               }
                             });
                           }
 
                           setState(() {
-                            _filterHabits();
+                            _filterTasks();
                             _loadPage();
                           });
 
-                          debugPrint('Saving habit to database...');
-                          await _dataService.saveHabit(savedHabit);
-                          debugPrint('Habit saved.');
+                          debugPrint('Saving task to database...');
+                          await _dataService.saveTask(savedTask);
+                          debugPrint('ActivityTask saved.');
                           if (context.mounted) {
                             debugPrint('Closing modal');
                             Navigator.pop(context);
@@ -672,7 +694,7 @@ class _HabitsScreenState extends State<HabitsScreen>
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
                       child: Text(
-                          habitToEdit == null ? 'Save Habit' : 'Update Habit'),
+                          taskToEdit == null ? 'Save ActivityTask' : 'Update ActivityTask'),
                     ),
                     const SizedBox(height: 16),
                   ],

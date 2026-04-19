@@ -3,7 +3,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cycle_data.dart';
-import '../../habits/models/habit.dart';
+import 'package:yepsy/features/tasks/models/task.dart';
 import '../utils/cycle_calculator.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -105,8 +105,8 @@ class NotificationService {
     return true; // Use defaults/implicit permission for other cases
   }
 
-  // Schedule period reminder
-  Future<void> schedulePeriodReminder(
+  // Schedule period task
+  Future<void> schedulePeriodTask(
     UserCycleProfile cycleProfile,
     int daysBeforePeriod,
   ) async {
@@ -137,8 +137,8 @@ class NotificationService {
     );
 
     const androidDetails = AndroidNotificationDetails(
-      'period_reminders',
-      'Period Reminders',
+      'period_tasks',
+      'Period Tasks',
       channelDescription: 'Notifications for upcoming period',
       importance: Importance.high,
       priority: Priority.high,
@@ -159,33 +159,33 @@ class NotificationService {
     try {
       await _notifications.zonedSchedule(
         0, // Notification ID
-        'Period Reminder',
+        'Period ActivityTask',
         'Your period is expected in $daysBeforePeriod ${daysBeforePeriod == 1 ? 'day' : 'days'}',
         scheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: 'period_reminder',
+        payload: 'period_task',
       );
     } catch (e) {
       // Fallback to inexact if permission denied
       await _notifications.zonedSchedule(
         0,
-        'Period Reminder',
+        'Period ActivityTask',
         'Your period is expected in $daysBeforePeriod ${daysBeforePeriod == 1 ? 'day' : 'days'}',
         scheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: 'period_reminder',
+        payload: 'period_task',
       );
     }
   }
 
-  // Schedule ovulation reminder
-  Future<void> scheduleOvulationReminder(UserCycleProfile cycleProfile) async {
+  // Schedule ovulation task
+  Future<void> scheduleOvulationTask(UserCycleProfile cycleProfile) async {
     if (cycleProfile.lastPeriodStart == null) return;
 
     // Calculate ovulation date
@@ -212,8 +212,8 @@ class NotificationService {
     );
 
     const androidDetails = AndroidNotificationDetails(
-      'ovulation_reminders',
-      'Ovulation Reminders',
+      'ovulation_tasks',
+      'Ovulation Tasks',
       channelDescription: 'Notifications for fertile window',
       importance: Importance.high,
       priority: Priority.high,
@@ -241,7 +241,7 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: 'ovulation_reminder',
+        payload: 'ovulation_task',
       );
     } catch (e) {
       await _notifications.zonedSchedule(
@@ -253,13 +253,13 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: 'ovulation_reminder',
+        payload: 'ovulation_task',
       );
     }
   }
 
-  // Schedule daily log reminder
-  Future<void> scheduleDailyLogReminder() async {
+  // Schedule daily log task
+  Future<void> scheduleDailyLogTask() async {
     final streakService = StreakService();
     final streak = await streakService.calculateCurrentStreak();
 
@@ -280,9 +280,9 @@ class NotificationService {
     }
 
     const androidDetails = AndroidNotificationDetails(
-      'daily_reminders',
-      'Daily Reminders',
-      channelDescription: 'Reminder to log your health data',
+      'daily_tasks',
+      'Daily Tasks',
+      channelDescription: 'ActivityTask to log your health data',
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
       icon: '@mipmap/launcher_icon',
@@ -305,14 +305,14 @@ class NotificationService {
         streak > 0 ? 'Keep your streak alive!' : 'Daily Check-in',
         streak > 0
             ? 'You have a $streak day streak! Log your logs today to keep it going.'
-            : 'Take a moment to log your mood, symptoms or meals today.',
+            : 'Take a moment to log your mood, symptoms or tasks today.',
         finalScheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
-        payload: 'daily_log_reminder',
+        payload: 'daily_log_task',
       );
     } catch (e) {
       await _notifications.zonedSchedule(
@@ -320,14 +320,14 @@ class NotificationService {
         streak > 0 ? 'Keep your streak alive!' : 'Daily Check-in',
         streak > 0
             ? 'You have a $streak day streak! Log your logs today to keep it going.'
-            : 'Take a moment to log your mood, symptoms or meals today.',
+            : 'Take a moment to log your mood, symptoms or tasks today.',
         finalScheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
-        payload: 'daily_log_reminder',
+        payload: 'daily_log_task',
       );
     }
   }
@@ -422,28 +422,37 @@ class NotificationService {
   static Future<Map<String, dynamic>> getPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     return {
-      'periodRemindersEnabled':
-          prefs.getBool('period_reminders_enabled') ?? false,
-      'ovulationRemindersEnabled':
-          prefs.getBool('ovulation_reminders_enabled') ?? false,
-      'reminderDaysBefore': prefs.getInt('reminder_days_before') ?? 2,
+      'periodTasksEnabled':
+          prefs.getBool('period_tasks_enabled') ?? false,
+      'ovulationTasksEnabled':
+          prefs.getBool('ovulation_tasks_enabled') ?? false,
+      'taskDaysBefore': prefs.getInt('task_days_before') ?? 2,
     };
   }
 
   // Save notification preferences
-  // Schedule habit reminder
-  Future<void> scheduleHabitReminder(Habit habit) async {
-    if (habit.reminderTime == null) return;
+  // Get notification ID from string UID (stable across restarts)
+  int _getNotificationId(String id) {
+    int hash = 0;
+    for (int i = 0; i < id.length; i++) {
+      hash = (31 * hash + id.codeUnitAt(i)) & 0x7FFFFFFF;
+    }
+    return hash;
+  }
+
+  // Schedule task task
+  Future<void> scheduleTaskTask(ActivityTask task) async {
+    if (task.taskTime == null) return;
 
     final now = DateTime.now();
-    // Use the reminder time's hour and minute
+    // Use the task time's hour and minute
     var scheduledDate = tz.TZDateTime.from(
       DateTime(
         now.year,
         now.month,
         now.day,
-        habit.reminderTime!.hour,
-        habit.reminderTime!.minute,
+        task.taskTime!.hour,
+        task.taskTime!.minute,
       ),
       tz.local,
     );
@@ -454,9 +463,9 @@ class NotificationService {
     }
 
     const androidDetails = AndroidNotificationDetails(
-      'habit_reminders',
-      'Habit Reminders',
-      channelDescription: 'Reminders for your habits',
+      'task_tasks',
+      'ActivityTask Tasks',
+      channelDescription: 'Tasks for your tasks',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/launcher_icon',
@@ -471,7 +480,7 @@ class NotificationService {
       presentBadge: true,
       presentSound: true,
       categoryIdentifier:
-          'habit_actions', // Needs setup in AppDelegate for iOS actions usually
+          'task_actions', // Needs setup in AppDelegate for iOS actions usually
     );
 
     const details = NotificationDetails(
@@ -479,65 +488,65 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    // Use hashcode of ID for unique notification ID
-    final notificationId = habit.id.hashCode;
+    // Use stable ID for unique notification ID
+    final notificationId = _getNotificationId(task.id);
 
     try {
       await _notifications.zonedSchedule(
         notificationId,
-        'Time for ${habit.title}',
-        habit.description.isNotEmpty
-            ? habit.description
-            : 'Don\'t forget your habit!',
+        'Time for ${task.title}',
+        task.description.isNotEmpty
+            ? task.description
+            : 'Don\'t forget your task!',
         scheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time, // Repeat daily
-        payload: 'habit_${habit.id}',
+        payload: 'task_${task.id}',
       );
     } catch (e) {
       await _notifications.zonedSchedule(
         notificationId,
-        'Time for ${habit.title}',
-        habit.description.isNotEmpty
-            ? habit.description
-            : 'Don\'t forget your habit!',
+        'Time for ${task.title}',
+        task.description.isNotEmpty
+            ? task.description
+            : 'Don\'t forget your task!',
         scheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
-        payload: 'habit_${habit.id}',
+        payload: 'task_${task.id}',
       );
     }
   }
 
-  // Cancel habit reminder
-  Future<void> cancelHabitReminder(String habitId) async {
-    await _notifications.cancel(habitId.hashCode);
+  // Cancel task task
+  Future<void> cancelTaskTask(String taskId) async {
+    await _notifications.cancel(_getNotificationId(taskId));
   }
 
   static Future<void> savePreferences({
-    bool? periodRemindersEnabled,
-    bool? ovulationRemindersEnabled,
-    int? reminderDaysBefore,
+    bool? periodTasksEnabled,
+    bool? ovulationTasksEnabled,
+    int? taskDaysBefore,
   }) async {
     final prefs = await SharedPreferences.getInstance();
 
-    if (periodRemindersEnabled != null) {
-      await prefs.setBool('period_reminders_enabled', periodRemindersEnabled);
+    if (periodTasksEnabled != null) {
+      await prefs.setBool('period_tasks_enabled', periodTasksEnabled);
     }
 
-    if (ovulationRemindersEnabled != null) {
+    if (ovulationTasksEnabled != null) {
       await prefs.setBool(
-          'ovulation_reminders_enabled', ovulationRemindersEnabled);
+          'ovulation_tasks_enabled', ovulationTasksEnabled);
     }
 
-    if (reminderDaysBefore != null) {
-      await prefs.setInt('reminder_days_before', reminderDaysBefore);
+    if (taskDaysBefore != null) {
+      await prefs.setInt('task_days_before', taskDaysBefore);
     }
   }
 
@@ -562,9 +571,9 @@ class NotificationService {
           final scheduledDate = now.add(const Duration(minutes: 10));
 
           const androidDetails = AndroidNotificationDetails(
-            'habit_reminders',
-            'Habit Reminders',
-            channelDescription: 'Reminders for your habits',
+            'task_tasks',
+            'ActivityTask Tasks',
+            channelDescription: 'Tasks for your tasks',
             importance: Importance.high,
             priority: Priority.high,
             icon: '@mipmap/launcher_icon',
@@ -579,8 +588,8 @@ class NotificationService {
 
           await _notifications.zonedSchedule(
             response.id!,
-            'Habit Reminder (Snoozed)',
-            'Time to complete your habit!',
+            'ActivityTask ActivityTask (Snoozed)',
+            'Time to complete your task!',
             scheduledDate,
             details,
             androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -594,10 +603,10 @@ class NotificationService {
       // 2. DATA WORK: Perform the actual logic in background
       if (response.payload == null) return;
 
-      // Parse payload "habit_ID"
+      // Parse payload "task_ID"
       final payloadParts = response.payload!.split('_');
-      if (payloadParts.length < 2 || payloadParts[0] != 'habit') return;
-      final habitId = payloadParts.sublist(1).join('_');
+      if (payloadParts.length < 2 || payloadParts[0] != 'task') return;
+      final taskId = payloadParts.sublist(1).join('_');
 
       if (response.actionId == actionComplete) {
         debugPrint('[Notification] Beginning Data Update isolate tasks');
@@ -611,7 +620,7 @@ class NotificationService {
         await _notifications.initialize(initSettings);
 
         await _initializeMinimalDataLayer();
-        await _markHabitComplete(habitId);
+        await _markTaskComplete(taskId);
       }
     } catch (e, stack) {
       debugPrint('[Notification] ERROR in background action: $e\n$stack');
@@ -625,7 +634,7 @@ class NotificationService {
 
       // Register adapters manually if needed for background isolate
       if (!Hive.isAdapterRegistered(5)) {
-        Hive.registerAdapter(HabitAdapter());
+        Hive.registerAdapter(ActivityTaskAdapter());
       }
 
       await DatabaseService.initialize();
@@ -635,29 +644,29 @@ class NotificationService {
     }
   }
 
-  Future<void> _markHabitComplete(String habitId) async {
+  Future<void> _markTaskComplete(String taskId) async {
     try {
       final cipher = await DatabaseService.getEncryptionCipher();
-      final box = await Hive.openBox<Habit>('habits', encryptionCipher: cipher);
+      final box = await Hive.openBox<ActivityTask>('tasks', encryptionCipher: cipher);
 
-      final habit = box.get(habitId);
-      if (habit != null) {
+      final task = box.get(taskId);
+      if (task != null) {
         final now = DateTime.now();
         final normalizedDate = DateTime(now.year, now.month, now.day);
 
         // Check if already completed
-        final isCompleted = habit.completedDates.any((d) =>
+        final isCompleted = task.completedDates.any((d) =>
             d.year == normalizedDate.year &&
             d.month == normalizedDate.month &&
             d.day == normalizedDate.day);
 
         if (!isCompleted) {
-          List<DateTime> newCompletedDates = List.from(habit.completedDates);
+          List<DateTime> newCompletedDates = List.from(task.completedDates);
           newCompletedDates.add(normalizedDate);
 
-          final updatedHabit =
-              habit.copyWith(completedDates: newCompletedDates);
-          await box.put(habitId, updatedHabit);
+          final updatedTask =
+              task.copyWith(completedDates: newCompletedDates);
+          await box.put(taskId, updatedTask);
         }
       }
     } catch (e) {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../theme/typography.dart';
 import '../../../shared/widgets/message_bubble.dart';
-import '../../habits/services/habit_service.dart';
+import '../../tasks/services/task_service.dart';
 import '../../notes/services/notes_data_service.dart';
 import '../../calendar/services/calendar_data_service.dart';
 import '../widgets/trend_graph.dart';
@@ -15,19 +15,19 @@ class AnalyticsScreen extends StatefulWidget {
   State<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
-enum AnalyticsMetric { habits, mood, symptoms }
+enum AnalyticsMetric { tasks, mood, symptoms }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  final HabitService _habitService = HabitService();
+  final TaskService _taskService = TaskService();
   final NotesDataService _notesService = NotesDataService();
   final CalendarDataService _calendarService = CalendarDataService();
 
-  Map<DateTime, double> _habitHistory = {}; // Changed to double
+  Map<DateTime, double> _taskHistory = {}; // Changed to double
   Map<DateTime, double> _moodHistory = {};
   Map<DateTime, double> _symptomHistory = {};
 
   bool _isLoading = true;
-  AnalyticsMetric _selectedMetric = AnalyticsMetric.habits;
+  AnalyticsMetric _selectedMetric = AnalyticsMetric.tasks;
 
   @override
   void initState() {
@@ -37,18 +37,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Future<void> _loadData() async {
     try {
-      await _habitService.init();
+      await _taskService.init();
       await _notesService.init();
       await _calendarService.init();
 
-      final habitHistory =
-          await _habitService.getCompletionRateHistory(7); // Use rate history
+      final taskHistory =
+          await _taskService.getCompletionRateHistory(7); // Use rate history
       final moodHistory = await _notesService.getMoodHistory(7);
       final symptomHistory = await _calendarService.getSymptomHistory(7);
 
       if (mounted) {
         setState(() {
-          _habitHistory = habitHistory;
+          _taskHistory = taskHistory;
           _moodHistory = moodHistory;
           _symptomHistory = symptomHistory;
           _isLoading = false;
@@ -73,8 +73,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   Map<DateTime, num> get _currentHistory {
     switch (_selectedMetric) {
-      case AnalyticsMetric.habits:
-        return _habitHistory;
+      case AnalyticsMetric.tasks:
+        return _taskHistory;
       case AnalyticsMetric.mood:
         return _moodHistory;
       case AnalyticsMetric.symptoms:
@@ -89,8 +89,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   String get _metricTitle {
     switch (_selectedMetric) {
-      case AnalyticsMetric.habits:
-        return 'Habit Score';
+      case AnalyticsMetric.tasks:
+        return 'ActivityTask Score';
       case AnalyticsMetric.mood:
         return 'Mood Score';
       case AnalyticsMetric.symptoms:
@@ -128,13 +128,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
 
     // Calculate Summary logic
-    // Habits: Total count
+    // Tasks: Total count
     // Mood: Average
     // Symptoms: Average non-zero
     String summaryValue = '';
 
-    if (_selectedMetric == AnalyticsMetric.habits) {
-      final values = _habitHistory.values;
+    if (_selectedMetric == AnalyticsMetric.tasks) {
+      final values = _taskHistory.values;
       if (values.isEmpty) {
         summaryValue = '0%';
       } else {
@@ -204,8 +204,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               child: SegmentedButton<AnalyticsMetric>(
                 segments: const [
                   ButtonSegment(
-                    value: AnalyticsMetric.habits,
-                    label: Text('Habits'),
+                    value: AnalyticsMetric.tasks,
+                    label: Text('Tasks'),
                     icon: Icon(Icons.check_circle_outline),
                   ),
                   ButtonSegment(

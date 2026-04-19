@@ -34,10 +34,10 @@ class VersionFeaturesPage extends StatelessWidget {
               features: {
                 'Calendar tracking with period predictions':
                     'Track your menstrual cycle with intelligent predictions based on your history',
-                'Advanced Habit Tracking':
-                    'Build new habits with flexible scheduling, daily reminders, and detailed check-in history',
+                'Advanced ActivityTask Tracking':
+                    'Build new tasks with flexible scheduling, daily tasks, and detailed check-in history',
                 'Unified Analytics Dashboard':
-                    'Monitor your Habits, Mood, and Health on a single, standardized 0-100% scale',
+                    'Monitor your Tasks, Mood, and Health on a single, standardized 0-100% scale',
                 'Symptom logging and analysis':
                     'Log and track symptoms with detailed insights into patterns',
                 'Notes with mood tracking':
@@ -45,7 +45,7 @@ class VersionFeaturesPage extends StatelessWidget {
                 'Cycle insights and predictions':
                     'Get personalized insights about your cycle patterns',
                 'Interactive Notifications':
-                    'Snooze or complete habits directly from your notification shade',
+                    'Snooze or complete tasks directly from your notification shade',
                 'Biometric lock for privacy':
                     'Secure your data with fingerprint or face recognition',
                 'End-to-end encryption':

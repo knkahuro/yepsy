@@ -14,6 +14,7 @@ import '../widgets/cycle_insights_card.dart';
 import '../utils/cycle_calculator.dart';
 import '../services/calendar_data_service.dart';
 import '../services/cycle_learning_service.dart';
+import '../../../core/services/tutorial_service.dart';
 
 import '../../../shared/widgets/skeleton_loader.dart';
 
@@ -49,6 +50,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _showSymptoms = false;
   bool _showFertileWindow = false;
   bool _showOvulation = false;
+
+  // Tutorial Keys
+  final GlobalKey _calendarKey = GlobalKey();
+  final GlobalKey _switchKey = GlobalKey();
+  final GlobalKey _messageKey = GlobalKey();
+  final GlobalKey _legendKey = GlobalKey();
+  final TutorialService _tutorialService = TutorialService();
 
   bool get _allTogglesOff =>
       !_showPeriods && !_showSymptoms && !_showFertileWindow && !_showOvulation;
@@ -119,6 +127,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _cycleProfile = cycleProfile;
           _isLoading = false;
         });
+        _checkTutorial();
       }
     } catch (e) {
       debugPrint('Error loading calendar data: $e');
@@ -134,6 +143,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     // Load filter states after cycle data is available
     await _loadFilterStates();
+  }
+
+  Future<void> _checkTutorial() async {
+    if (await _tutorialService.shouldShowCalendarTutorial()) {
+      // Small delay to ensure UI is ready and animations settled
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        _tutorialService.showCalendarTutorial(
+          context: context,
+          calendarKey: _calendarKey,
+          switchKey: _switchKey,
+          messageKey: _messageKey,
+          legendKey: _legendKey,
+        );
+      });
+    }
   }
 
   @override
@@ -230,6 +255,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               });
             },
             icon: Icon(
+              key: _switchKey,
               _calendarFormat == CalendarFormat.month
                   ? Icons.calendar_view_day
                   : Icons.calendar_view_month,
@@ -257,8 +283,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(width: 16),
-                  const Expanded(
+                  Expanded(
                     child: MessageBubble(
+                      key: _messageKey,
                       message: 'Raincheck..1,2,3',
                     ),
                   ),
@@ -267,6 +294,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const SizedBox(height: 20),
               // Calendar
               Container(
+                key: _calendarKey,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -372,6 +400,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const SizedBox(height: 16),
               // Interactive Legend
               Wrap(
+                key: _legendKey,
                 alignment: WrapAlignment.center,
                 spacing: 12,
                 runSpacing: 8,

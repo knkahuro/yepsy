@@ -1,10 +1,10 @@
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
-part 'habit.g.dart';
+part 'task.g.dart';
 
 @HiveType(typeId: 5)
-class Habit {
+class ActivityTask {
   @HiveField(0)
   final String id;
   @HiveField(1)
@@ -18,20 +18,20 @@ class Habit {
   @HiveField(7)
   final DateTime date;
   @HiveField(8)
-  final DateTime? reminderTime;
+  final DateTime? taskTime;
   @HiveField(9)
   final List<DateTime> completedDates;
   @HiveField(10)
   final List<int> frequency;
 
-  Habit({
+  ActivityTask({
     String? id,
     required this.title,
     required this.description,
     this.isFavorite = false,
     this.category = 'Other',
     DateTime? date,
-    this.reminderTime,
+    this.taskTime,
     List<DateTime>? completedDates,
     List<int>? frequency,
   })  : id = id ?? const Uuid().v4(),
@@ -39,25 +39,25 @@ class Habit {
         completedDates = completedDates ?? [],
         frequency = frequency ?? [1, 2, 3, 4, 5, 6, 7];
 
-  Habit copyWith({
+  ActivityTask copyWith({
     String? id,
     String? title,
     String? description,
     bool? isFavorite,
     String? category,
     DateTime? date,
-    DateTime? reminderTime,
+    DateTime? taskTime,
     List<DateTime>? completedDates,
     List<int>? frequency,
   }) {
-    return Habit(
+    return ActivityTask(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
       isFavorite: isFavorite ?? this.isFavorite,
       category: category ?? this.category,
       date: date ?? this.date,
-      reminderTime: reminderTime ?? this.reminderTime,
+      taskTime: taskTime ?? this.taskTime,
       completedDates: completedDates ?? this.completedDates,
       frequency: frequency ?? this.frequency,
     );

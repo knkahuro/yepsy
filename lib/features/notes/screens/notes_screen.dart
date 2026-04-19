@@ -7,6 +7,7 @@ import '../widgets/note_tile.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
 import '../services/notes_data_service.dart';
+import '../../../core/services/tutorial_service.dart';
 
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
@@ -31,6 +32,11 @@ class _NotesScreenState extends State<NotesScreen> {
   bool _hasMoreData = true;
 
   final ScrollController _scrollController = ScrollController();
+
+  // Tutorial Keys
+  final GlobalKey _addButtonKey = GlobalKey();
+  final GlobalKey _moodBarKey = GlobalKey();
+  final TutorialService _tutorialService = TutorialService();
 
   @override
   void initState() {
@@ -70,6 +76,7 @@ class _NotesScreenState extends State<NotesScreen> {
           _loadPage();
           _isLoading = false;
         });
+        _checkTutorial();
       }
     } catch (e) {
       debugPrint('Error loading notes: $e');
@@ -114,6 +121,19 @@ class _NotesScreenState extends State<NotesScreen> {
     _loadPage();
 
     if (mounted) setState(() => _isLoadingMore = false);
+  }
+
+  Future<void> _checkTutorial() async {
+    if (await _tutorialService.shouldShowNotesTutorial()) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        _tutorialService.showNotesTutorial(
+          context: context,
+          addKey: _addButtonKey,
+          moodKey: _moodBarKey,
+        );
+      });
+    }
   }
 
   void _filterNotes() {
@@ -161,6 +181,7 @@ class _NotesScreenState extends State<NotesScreen> {
         ),
         actions: [
           IconButton(
+            key: _addButtonKey,
             onPressed: () => _showAddNoteForm(context),
             icon: const Icon(Icons.add_box_outlined, color: Colors.white),
           ),
@@ -261,6 +282,7 @@ class _NotesScreenState extends State<NotesScreen> {
                       const SizedBox(height: 12),
                       // Mood Filters
                       SingleChildScrollView(
+                        key: _moodBarKey,
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [

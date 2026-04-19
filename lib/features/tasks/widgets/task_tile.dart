@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../../../theme/typography.dart';
-import '../models/habit.dart';
+import '../models/task.dart';
 
-class HabitTile extends StatelessWidget {
-  final Habit habit;
+class TaskTile extends StatelessWidget {
+  final ActivityTask task;
   final VoidCallback onEdit;
   final VoidCallback? onDelete;
   final Function(bool?)? onToggleCompletion;
   final bool isCompleted;
 
-  const HabitTile({
+  const TaskTile({
     super.key,
-    required this.habit,
+    required this.task,
     required this.onEdit,
     this.onDelete,
     this.onToggleCompletion,
@@ -45,7 +45,7 @@ class HabitTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Habit Details
+          // ActivityTask Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,7 +58,7 @@ class HabitTile extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              habit.title,
+                              task.title,
                               style:
                                   AppTypography.textTheme.titleMedium?.copyWith(
                                 color: titleColor,
@@ -82,7 +82,7 @@ class HabitTile extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              habit.category,
+                              task.category,
                               style: TextStyle(
                                 color: chipTextColor,
                                 fontSize: 10,
@@ -107,7 +107,7 @@ class HabitTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  habit.description,
+                  task.description,
                   style: AppTypography.textTheme.bodyMedium?.copyWith(
                     color: descriptionColor,
                     fontSize: 12,
@@ -116,15 +116,15 @@ class HabitTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
-                // Footer: Reminder + Rating
+                // Footer: ActivityTask + Rating
                 Row(
                   children: [
-                    if (habit.reminderTime != null) ...[
+                    if (task.taskTime != null) ...[
                       Icon(Icons.access_alarm,
                           size: 14, color: descriptionColor),
                       const SizedBox(width: 4),
                       Text(
-                        '${habit.reminderTime!.hour.toString().padLeft(2, '0')}:${habit.reminderTime!.minute.toString().padLeft(2, '0')}',
+                        '${task.taskTime!.hour.toString().padLeft(2, '0')}:${task.taskTime!.minute.toString().padLeft(2, '0')}',
                         style: TextStyle(
                           color: descriptionColor,
                           fontSize: 12,
@@ -134,11 +134,11 @@ class HabitTile extends StatelessWidget {
                       const SizedBox(width: 12),
                     ],
                     // Frequency
-                    if (habit.frequency.isNotEmpty) ...[
+                    if (task.frequency.isNotEmpty) ...[
                       Icon(Icons.repeat, size: 14, color: descriptionColor),
                       const SizedBox(width: 4),
                       Text(
-                        _getFrequencyText(habit.frequency),
+                        _getFrequencyText(task.frequency),
                         style: TextStyle(
                           color: descriptionColor,
                           fontSize: 12,

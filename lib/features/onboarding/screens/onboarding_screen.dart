@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../theme/typography.dart';
 import '../../../core/services/onboarding_service.dart';
-import '../../../core/services/sample_data_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -14,16 +13,14 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   final OnboardingService _onboardingService = OnboardingService();
-  final SampleDataService _sampleDataService = SampleDataService();
 
   int _currentPage = 0;
-  bool _isGeneratingData = false;
 
   final List<OnboardingContent> _slides = [
     OnboardingContent(
       title: 'Welcome to Yepsy',
       description:
-          'Your private, secure companion for tracking health, mood, and meals.',
+          'Your private, secure companion for tracking health, mood, and tasks.',
       imagePath: 'assets/images/yepsy.png',
       color: const Color(0xFFFF80AB), // Pink accent
     ),
@@ -35,10 +32,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       color: const Color(0xFF9575CD), // Purple accent
     ),
     OnboardingContent(
-      title: 'Build Healthy Habits',
+      title: 'Build Healthy Tasks',
       description:
-          'Log meals, hydration, and daily habits to stay on top of your game.',
-      imagePath: 'assets/images/habit.png',
+          'Log meals, hydration, and daily tasks to stay on top of your game.',
+      imagePath: 'assets/images/task.png',
       color: const Color(0xFFFFB74D), // Orange accent
     ),
     OnboardingContent(
@@ -58,12 +55,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   Future<void> _onFinish() async {
-    setState(() => _isGeneratingData = true);
-
     try {
-      // Generate sample data
-      await _sampleDataService.generateSampleData();
-
       // Mark as completed
       await _onboardingService.completeOnboarding();
 
@@ -72,9 +64,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isGeneratingData = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error setting up data: $e')),
+          SnackBar(content: Text('Error completing onboarding: $e')),
         );
       }
     }
@@ -167,18 +158,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isGeneratingData
-                        ? null
-                        : () {
-                            if (_currentPage == _slides.length - 1) {
-                              _onFinish();
-                            } else {
-                              _pageController.nextPage(
-                                duration: const Duration(milliseconds: 500),
-                                curve: Curves.easeInOut,
-                              );
-                            }
-                          },
+                    onPressed: () {
+                      if (_currentPage == _slides.length - 1) {
+                        _onFinish();
+                      } else {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 500),
+                          curve: Curves.easeInOut,
+                        );
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: themeColor,
                       foregroundColor: Colors.white,
@@ -187,24 +176,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: _isGeneratingData
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            _currentPage == _slides.length - 1
-                                ? 'Get Started'
-                                : 'Next',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                    child: Text(
+                      _currentPage == _slides.length - 1
+                          ? 'Get Started'
+                          : 'Next',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],

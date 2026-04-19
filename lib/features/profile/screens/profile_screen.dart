@@ -34,9 +34,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final ImportService _importService;
   final _notificationService = NotificationService();
 
-  bool _periodRemindersEnabled = false;
-  bool _ovulationRemindersEnabled = false;
-  int _reminderDaysBefore = 2;
+  bool _periodTasksEnabled = false;
+  bool _ovulationTasksEnabled = false;
+  int _taskDaysBefore = 2;
   bool _isLoading = true;
   int _currentStreak = 0;
 
@@ -63,9 +63,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final prefs = await NotificationService.getPreferences();
     if (mounted) {
       setState(() {
-        _periodRemindersEnabled = prefs['periodRemindersEnabled'];
-        _ovulationRemindersEnabled = prefs['ovulationRemindersEnabled'];
-        _reminderDaysBefore = prefs['reminderDaysBefore'];
+        _periodTasksEnabled = prefs['periodTasksEnabled'];
+        _ovulationTasksEnabled = prefs['ovulationTasksEnabled'];
+        _taskDaysBefore = prefs['taskDaysBefore'];
         _isLoading = false;
       });
 
@@ -214,7 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _togglePeriodReminders(bool value) async {
+  Future<void> _togglePeriodTasks(bool value) async {
     final messenger = ScaffoldMessenger.of(context);
     if (value) {
       final hasPermission = await _notificationService.requestPermissions();
@@ -226,21 +226,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
-    setState(() => _periodRemindersEnabled = value);
-    await NotificationService.savePreferences(periodRemindersEnabled: value);
+    setState(() => _periodTasksEnabled = value);
+    await NotificationService.savePreferences(periodTasksEnabled: value);
 
     if (value) {
       final cycleProfile = await _dataService.getOrCreateCycleProfile();
-      await _notificationService.schedulePeriodReminder(
+      await _notificationService.schedulePeriodTask(
         cycleProfile,
-        _reminderDaysBefore,
+        _taskDaysBefore,
       );
     } else {
       await _notificationService.cancelNotification(0);
     }
   }
 
-  Future<void> _toggleOvulationReminders(bool value) async {
+  Future<void> _toggleOvulationTasks(bool value) async {
     final messenger = ScaffoldMessenger.of(context);
     if (value) {
       final hasPermission = await _notificationService.requestPermissions();
@@ -252,24 +252,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
-    setState(() => _ovulationRemindersEnabled = value);
-    await NotificationService.savePreferences(ovulationRemindersEnabled: value);
+    setState(() => _ovulationTasksEnabled = value);
+    await NotificationService.savePreferences(ovulationTasksEnabled: value);
 
     if (value) {
       final cycleProfile = await _dataService.getOrCreateCycleProfile();
-      await _notificationService.scheduleOvulationReminder(cycleProfile);
+      await _notificationService.scheduleOvulationTask(cycleProfile);
     } else {
       await _notificationService.cancelNotification(1);
     }
   }
 
-  Future<void> _updateReminderDays(int days) async {
-    setState(() => _reminderDaysBefore = days);
-    await NotificationService.savePreferences(reminderDaysBefore: days);
+  Future<void> _updateTaskDays(int days) async {
+    setState(() => _taskDaysBefore = days);
+    await NotificationService.savePreferences(taskDaysBefore: days);
 
-    if (_periodRemindersEnabled) {
+    if (_periodTasksEnabled) {
       final cycleProfile = await _dataService.getOrCreateCycleProfile();
-      await _notificationService.schedulePeriodReminder(
+      await _notificationService.schedulePeriodTask(
         cycleProfile,
         days,
       );
@@ -495,22 +495,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SwitchListTile(
                     secondary: Icon(Icons.notifications,
                         color: Theme.of(context).colorScheme.primary),
-                    title: const Text('Period Reminders'),
+                    title: const Text('Period Tasks'),
                     subtitle: const Text('Get notified before your period'),
-                    value: _periodRemindersEnabled,
+                    value: _periodTasksEnabled,
                     activeTrackColor: Theme.of(context).colorScheme.primary,
-                    onChanged: _togglePeriodReminders,
+                    onChanged: _togglePeriodTasks,
                   ),
                   const Divider(),
                   SwitchListTile(
                     secondary: const Icon(Icons.favorite, color: Colors.purple),
-                    title: const Text('Ovulation Reminders'),
+                    title: const Text('Ovulation Tasks'),
                     subtitle: const Text('Get notified during fertile window'),
-                    value: _ovulationRemindersEnabled,
+                    value: _ovulationTasksEnabled,
                     activeTrackColor: Colors.purple,
-                    onChanged: _toggleOvulationReminders,
+                    onChanged: _toggleOvulationTasks,
                   ),
-                  if (_periodRemindersEnabled) ...[
+                  if (_periodTasksEnabled) ...[
                     const Divider(),
                     Padding(
                       padding: const EdgeInsets.all(16),
@@ -518,18 +518,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Remind me $_reminderDaysBefore ${_reminderDaysBefore == 1 ? 'day' : 'days'} before',
+                            'Remind me $_taskDaysBefore ${_taskDaysBefore == 1 ? 'day' : 'days'} before',
                             style: AppTypography.textTheme.bodyMedium,
                           ),
                           Slider(
-                            value: _reminderDaysBefore.toDouble(),
+                            value: _taskDaysBefore.toDouble(),
                             min: 1,
                             max: 5,
                             divisions: 4,
                             activeColor: Theme.of(context).colorScheme.primary,
-                            label: '$_reminderDaysBefore days',
+                            label: '$_taskDaysBefore days',
                             onChanged: (value) =>
-                                _updateReminderDays(value.toInt()),
+                                _updateTaskDays(value.toInt()),
                           ),
                         ],
                       ),

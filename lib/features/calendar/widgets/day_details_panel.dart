@@ -194,7 +194,7 @@ class DayDetailsPanel extends StatelessWidget {
     switch (category) {
       case 'appointment':
         return Icons.event;
-      case 'reminder':
+      case 'task':
         return Icons.notifications;
       case 'medication':
         return Icons.medication;

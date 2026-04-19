@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../features/notes/screens/notes_screen.dart';
-import '../features/habits/screens/habits_screen.dart';
+import '../features/tasks/screens/tasks_screen.dart';
 import '../features/calendar/screens/calendar_screen.dart';
 import '../features/analytics/screens/analytics_screen.dart';
 
@@ -54,12 +54,12 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
-        // Meals Tab
+        // Tasks Tab
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/habits',
-              builder: (context, state) => const HabitsScreen(),
+              path: '/tasks',
+              builder: (context, state) => const TasksScreen(),
             ),
           ],
         ),

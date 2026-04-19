@@ -26,7 +26,7 @@ class _AddEventFormState extends State<AddEventForm> {
 
   final List<String> _categories = [
     'appointment',
-    'reminder',
+    'task',
     'medication',
     'exercise',
     'other',
